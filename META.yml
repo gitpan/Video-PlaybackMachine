@@ -1,0 +1,17 @@
+# http://module-build.sourceforge.net/META-spec.html
+#XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
+name:         Video-PlaybackMachine
+version:      0.02
+version_from: PlaybackMachine.pm
+installdirs:  site
+requires:
+    Image::Imlib2:                 0
+    Log::Log4perl:                 0
+    POE:                           0
+    Test::MockObject:              0
+    Time::Duration:                0
+    Video::Xine:                   0
+    X11::FullScreen:               0
+
+distribution_type: module
+generated_by: ExtUtils::MakeMaker version 6.17
