@@ -3,7 +3,7 @@ package Video::PlaybackMachine::FillProducer::SlideShow;
 ####
 #### Video::PlaybackMachine::FillProducer::SlideShow
 ####
-#### $Revision: 1.5 $
+#### $Revision: 1.6 $
 ####
 #### Plays a bunch of random photos. Since we need to do things
 #### at particular delay times, launches its own POE session.
@@ -26,7 +26,7 @@ use Video::PlaybackMachine::FillProducer::Chooser;
 ############################# Class Constants #############################
 
 # Maximum number of slides to play in a row
-our $Max_Slides = 5;
+our $Max_Slides = Video::PlaybackMachine::Config->config()->max_slides();
 
 ############################## Class Methods ##############################
 

@@ -15,10 +15,12 @@ use Log::Log4perl;
 use Video::PlaybackMachine::Movie;
 use Video::PlaybackMachine::AVFile;
 use Video::PlaybackMachine::ScheduleEntry;
+use Video::PlaybackMachine::Config;
+use Video::PlaybackMachine::DB;
 
 ############################## Class Constants #####################################
 
-our $Database_Name = 'playback_machine';
+our $Database_Name = Video::PlaybackMachine::Config->config->database();
 
 ############################## Class Methods #######################################
 
@@ -41,28 +43,7 @@ sub new
 
 ############################## Object Methods ######################################
 
-##
-## connect()
-##
-## Connects to the given database.
-##
-sub connect
-{
-	my $self = shift;
-	$self->{'dbh'} = DBI->connect( "dbi:Pg:dbname=$Database_Name", '', '' )
-	  or croak "Couldn't open database '$Database_Name' for reading: ",
-	  DBI->errstr(), ", stopped";
-}
-
-sub getDbh
-{
-	my $self = shift;
-	unless ( defined $self->{'dbh'} )
-	{
-		$self->connect();
-	}
-	return $self->{'dbh'};
-}
+sub getDbh { return Video::PlaybackMachine::DB->db(); }
 
 ##
 ## get_entries_after()

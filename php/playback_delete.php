@@ -1,12 +1,13 @@
 <?php
+start_session();
 import_request_variables('p', 'p_');
 ?>
 
 
 <HTML>
-<HEAD><TITLE>Schedule <?php echo $p_schedule ?></TITLE></HEAD>
+<HEAD><TITLE>Schedule <?php echo $_SESSION['schedule'] ?></TITLE></HEAD>
 <BODY>
-<H1>Schedule <?php echo $p_schedule ?></H1>
+<H1>Schedule <?php echo $_SESSION['schedule'] ?></H1>
 
 <P>Deleting movies...
 
@@ -19,7 +20,7 @@ if (!$database) {
 }
 
 for ($i = 0; $i < count($p_delete_ids); $i++) {
-  if (! pg_query($database, "delete from content_schedule where id=$p_delete_ids[$i];")) {
+  if (! pg_query($database, "delete from content_schedule where id=$p_delete_ids[$i] and schedule=$_SESSION['schedule'];")) {
     echo "Error: Couldn't delete id '$p_delete_id'<p>";
     exit;
   }

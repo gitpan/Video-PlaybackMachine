@@ -9,7 +9,7 @@ CREATE TABLE av_file_component (
 	title		text REFERENCES av_files 
 						ON DELETE CASCADE
 						ON UPDATE CASCADE,
-	duration	interval NOT NULL,
+	duration	INTERVAL NOT NULL,
 	sequence_no	int DEFAULT (0),
 	PRIMARY KEY (file,sequence_no)
 );
@@ -35,10 +35,10 @@ CREATE TABLE schedules (
 
 CREATE TABLE content_schedule (
 	id		SERIAL PRIMARY KEY,
-	title 		text not null references av_files
+	title 		text NOT NULL references av_files
 				ON DELETE CASCADE
 				ON UPDATE CASCADE,
-	schedule	text DEFAULT 'Baycon 2005' references schedules (name) 
+	schedule	text NOT NULL references schedules (name) 
 				ON DELETE CASCADE
 				ON UPDATE CASCADE,
 	listed		boolean DEFAULT true,

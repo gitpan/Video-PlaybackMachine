@@ -1,6 +1,11 @@
 Revision history for Perl extension Video::PlaybackMachine.
 
-0.02  Initial public release.
+0.03  Sun Jun 12 10:23:02 2005
+	- Moved all magic constants to configuration file
+	- Separated/centralized database access
+
+0.02  Fri Jun  3 05:35:39 2005
+	- Initial public release
 
 0.01  Sun Jul  6 23:16:46 2003
 	- original version; created by h2xs 1.22 with options

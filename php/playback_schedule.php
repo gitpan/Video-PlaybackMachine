@@ -1,13 +1,16 @@
 <?php 
-if (! $_REQUEST['schedule_name']) {
-  $_REQUEST['schedule_name'] = 'Baycon 2006';
+
+session_start();
+if (! $_SESSION['schedule'] ) {
+  $_SESSION['schedule'] = $_REQUEST['schedule'];
 }
+
 ?>
 
 <HTML>
-<HEAD><TITLE>Schedule <?php echo $_REQUEST['schedule_name'] ?></TITLE></HEAD>
+<HEAD><TITLE>Schedule <?php echo $_SESSION['schedule'] ?></TITLE></HEAD>
 <BODY>
-<H1>Schedule <?php echo $_REQUEST['schedule_name'] ?></H1>
+<H1>Schedule <?php echo $_SESSION['schedule'] ?></H1>
 
 <TABLE BORDER="1">
 <TR>
@@ -26,7 +29,7 @@ if (!$database) {
   exit;
 }
 
-$result = pg_query($database, "select start_time, stop_time, title, id FROM schedule_times where schedule='$_REQUEST[schedule_name]' order by start_time");
+$result = pg_query($database, "select start_time, stop_time, title, id FROM schedule_times where schedule='$_SESSION[schedule]' order by start_time");
 if (!$result) {
   echo "Error: " . pg_last_error();
 
@@ -56,13 +59,12 @@ for ($i = 0; $i < pg_num_rows($result); $i++) {
 <HR/>
 <P/>
 <FORM action="playback_add.php" method="post">
-<INPUT TYPE="hidden" NAME="schedule" VALUE="<?php echo $_REQUEST['schedule_name'] ?>"/>
 <TABLE>
 <TR>
 <TD>
 <INPUT TYPE="text" NAME="start_time" VALUE="<?php 
 
-$result = pg_query($database, "select date_trunc('minute', max(stop_time(title,start_time))) + INTERVAL '1 min' FROM content_schedule where schedule='$_REQUEST[schedule_name]'");
+$result = pg_query($database, "select date_trunc('minute', max(stop_time(title,start_time))) + INTERVAL '1 min' FROM content_schedule where schedule='$_SESSION[schedule]'");
 if (!$result) {
   echo "Error: " . pg_last_error();
   exit;

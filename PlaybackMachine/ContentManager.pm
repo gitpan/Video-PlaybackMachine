@@ -38,9 +38,9 @@ use strict;
 use warnings;
 use diagnostics;
 
-use Video::Xine;
+use Video::PlaybackMachine::Config;
+
 use File::Basename;
-use POSIX 'ceil';
 use Carp;
 
 use DBI;
@@ -48,10 +48,6 @@ use DBI;
 use base 'Exporter';
 our @EXPORT_OK = qw(get_title get_length add_movie add_fill get_missing);
 
-
-####################### Module Constants #########################
-
-our $Database_Name = 'playback_machine';
 
 ######################## Subroutines ############################
 
@@ -62,7 +58,7 @@ our $Database_Name = 'playback_machine';
 sub get_missing {
   my ($filename) = @_;
 
-  my $dbh = get_dbh();
+  my $dbh = Video::PlaybackMachine::DB->db();
   my $sth = $dbh->prepare('SELECT title,file FROM av_file_component');
   $sth->execute()
     or die "Couldn't execute: '$DBI::errstr'; stopped";
@@ -85,47 +81,17 @@ sub get_title {
   my $title = join(' ', map { ucfirst( lc($_)  )} @words);
 }
 
-BEGIN: {
-
-my $dbh;
-
-sub get_dbh {
-  if (! defined($dbh) ) {
-
-    $dbh = DBI->connect( "dbi:Pg:dbname=$Database_Name", '', '', 
-			 {
-			  RaiseError => 1,
-			  AutoCommit => 1
-			 }
-		       )
-      or croak("Couldn't open database '$Database_Name' for reading: ",
-	       DBI->errstr(), ", stopped");
-  }
-  return $dbh;
-
-}
-
-}
-
 sub get_length {
-  my ($filename) = @_;
+  my $be = Video::PlaybackMachine::Config->config()->get_player_backend();
+  return $be->movie_length($_[0]);
 
-  my $xine = Video::Xine->new(config_file => '/dev/null');
-  my $null_ao_driver = Video::Xine::Driver::Audio->new($xine, 'none')
-      or die "Couldn't open audio driver\n";
-  my $stream = $xine->stream_new($null_ao_driver);
-  $stream->open($filename)
-    or croak "Couldn't open '$filename'";
-  my (undef, undef, $length_millis) = $stream->get_pos_length();
-
-  return ceil($length_millis / 1000);
 }
 
 # TODO: Make $length optional?
 sub add_movie {
   my ($filename, $title, $length) = @_;
 
-  my $dbh = get_dbh();
+  my $dbh = Video::PlaybackMachine::DB->db();
 
   $dbh->begin_work();
 
@@ -143,7 +109,7 @@ sub add_movie {
 sub add_fill {
   my ($filename, $title, $length) = @_;
 
-  my $dbh = get_dbh();
+  my $dbh = Video::PlaybackMachine::DB->db();
 
   $dbh->begin_work();
 

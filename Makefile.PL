@@ -13,6 +13,7 @@ WriteMakefile(
 			    'X11::FullScreen' => 0,
 			    'Image::Imlib2' => 0,
 			    'Log::Log4perl' => 0,
+			    'AppConfig' => 0
 			   }, # e.g., Module::Name => 1.1
     'ABSTRACT_FROM' => 'PlaybackMachine.pm', # retrieve abstract from module
     'AUTHOR'     => 'Stephen Nelson <stephen@cpan.org>',

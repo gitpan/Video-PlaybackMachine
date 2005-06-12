@@ -5,7 +5,10 @@ bin/playback_machine.pl
 bin/show_missing.pl
 blackboxtests/filler_test.pl
 Changes
+conf/logrotate
 conf/playback_log.conf
+conf/playback_machine.conf
+errors.txt
 Makefile.PL
 MANIFEST			This list of files
 META.yml
@@ -20,8 +23,10 @@ php/playback_update_finish.php
 PlaybackMachine.pm
 PlaybackMachine/AbstractListable.pm
 PlaybackMachine/AVFile.pm
+PlaybackMachine/Config.pm
 PlaybackMachine/ContentManager.pm
 PlaybackMachine/DatabaseWatcher.pm
+PlaybackMachine/DB.pm
 PlaybackMachine/EventWheel.pm
 PlaybackMachine/EventWheel/FullScreen.pm
 PlaybackMachine/Filler.pm
@@ -40,7 +45,10 @@ PlaybackMachine/FillSegment.pm
 PlaybackMachine/Listable.pm
 PlaybackMachine/Movie.pm
 PlaybackMachine/Notes.txt
+PlaybackMachine/notes.txt
 PlaybackMachine/Player.pm
+PlaybackMachine/PlayerBackEnd.pm
+PlaybackMachine/PlayerBackEnd/XineBackEnd.pm
 PlaybackMachine/ScheduleEntry.pm
 PlaybackMachine/Scheduler.pm
 PlaybackMachine/ScheduleTable.pm
@@ -53,6 +61,7 @@ PlaybackMachine/TimeLayout/RangeLayout.pm
 PlaybackMachine/TimeManager.pm
 README
 sql/playback_machine_dd.sql
+sql/random_content.sql
 t/fill_segment.t
 t/fixed_time_layout.t
 t/lib/Video/PlaybackMachine/MockScheduleTable.pm
@@ -60,6 +69,7 @@ t/lib/Video/PlaybackMachine/TestMovie.pm
 t/mock_schedule_maker.t
 t/movie.t
 t/player.t
+t/player_still.t
 t/test_movies/bctv-id.png
 t/test_movies/square_logo.png
 t/test_movies/test_logo.png

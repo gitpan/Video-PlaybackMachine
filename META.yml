@@ -1,10 +1,11 @@
 # http://module-build.sourceforge.net/META-spec.html
 #XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
 name:         Video-PlaybackMachine
-version:      0.02
+version:      0.03
 version_from: PlaybackMachine.pm
 installdirs:  site
 requires:
+    AppConfig:                     0
     Image::Imlib2:                 0
     Log::Log4perl:                 0
     POE:                           0
