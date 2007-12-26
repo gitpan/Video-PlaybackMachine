@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<includepath>
+  <includepathentry path="/Users/stephennelson/Documents/workspace/Video-PlaybackMachine/lib" />
+  <includepathentry path="/Users/stephennelson/Documents/workspace/X11-FullScreen/blib/lib" />
+  <includepathentry path="/Users/stephennelson/Documents/workspace/Video-Xine/lib" />
+</includepath>
+

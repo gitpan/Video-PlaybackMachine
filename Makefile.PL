@@ -4,7 +4,7 @@ use ExtUtils::MakeMaker;
 # the contents of the Makefile that is written.
 WriteMakefile(
     'NAME'		=> 'Video::PlaybackMachine',
-    'VERSION_FROM'	=> 'PlaybackMachine.pm', # finds $VERSION
+    'VERSION_FROM'	=> 'lib/Video/PlaybackMachine.pm', # finds $VERSION
     'PREREQ_PM'		=> {
 			    'POE' => 0,
 			    'Time::Duration' => 0,
@@ -15,6 +15,6 @@ WriteMakefile(
 			    'Log::Log4perl' => 0,
 			    'AppConfig' => 0
 			   }, # e.g., Module::Name => 1.1
-    'ABSTRACT_FROM' => 'PlaybackMachine.pm', # retrieve abstract from module
+    'ABSTRACT_FROM' => 'lib/Video/PlaybackMachine.pm', # retrieve abstract from module
     'AUTHOR'     => 'Stephen Nelson <stephen@cpan.org>',
 );

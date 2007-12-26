@@ -1,0 +1,27 @@
+Installation instructions:
+
+1. Install prerequisite Perl modules:
+   * X11::FullScreen
+   * Time::Duration
+   * Video::Xine
+   * App::Config
+   * Image::Imlib2
+
+2. Install prerequisite Unix libraries and packages:
+   * xine-lib
+   * postgres
+   * postgres-perl
+
+(Hopefully all of the above can be handled by an RPM install)
+
+3. Start Postgres
+
+4. Run the Postgres installation script
+
+For PHP:
+
+5. Install prerequisite packages:
+  * apache
+  * php
+
+6. Run the PHP installation script

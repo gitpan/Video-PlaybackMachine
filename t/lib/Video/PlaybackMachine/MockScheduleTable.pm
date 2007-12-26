@@ -3,7 +3,7 @@ package Video::PlaybackMachine::MockScheduleTable;
 ####
 #### MockScheduleTable
 ####
-#### $Revision: 1.3 $
+#### $Revision: 321 $
 ####
 #### Exports a single function letting us make a mock schedule table.
 #### (Also there's an object-oriented interface, plus an add() method

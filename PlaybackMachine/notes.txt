@@ -1,3 +1,0 @@
-Roadblock. What should internal state be for player backends?
-(Everything.) How to handle event callbacks? (Standard set of events
-and a check_event call.)

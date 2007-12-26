@@ -7,6 +7,9 @@ use diagnostics;
 use Cwd 'abs_path';
 use Time::Duration;
 
+use FindBin '$Bin';
+use lib "$Bin/../lib";
+
 use Video::PlaybackMachine::ContentManager qw(get_title get_length add_movie);
 
 ######################## Script Constants #######################

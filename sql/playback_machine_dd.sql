@@ -1,139 +1,137 @@
-CREATE TABLE av_files (
-	title		text primary key
+CREATE TABLE AV_FILES (
+	TITLE		TEXT PRIMARY KEY
 );
 
-
-
-CREATE TABLE av_file_component (
-	file		text NOT NULL,
-	title		text REFERENCES av_files 
+CREATE TABLE AV_FILE_COMPONENT (
+	FILE		TEXT NOT NULL,
+	TITLE		TEXT REFERENCES AV_FILES 
 						ON DELETE CASCADE
 						ON UPDATE CASCADE,
-	duration	INTERVAL NOT NULL,
-	sequence_no	int DEFAULT (0),
-	PRIMARY KEY (file,sequence_no)
+	DURATION	INTERVAL NOT NULL,
+	SEQUENCE_NO	INT DEFAULT (0),
+	PRIMARY KEY (FILE,SEQUENCE_NO)
 );
 
-CREATE TABLE fill_shorts (
-	title		text REFERENCES av_files ON DELETE CASCADE
+CREATE TABLE FILL_SHORTS (
+	TITLE		TEXT REFERENCES AV_FILES ON DELETE CASCADE
 						 ON UPDATE CASCADE,
-	group_name 	text
+	GROUP_NAME 	TEXT
 );
 
-CREATE TABLE contents (
-	title		text PRIMARY KEY REFERENCES av_files
+CREATE TABLE CONTENTS (
+	TITLE		TEXT PRIMARY KEY REFERENCES AV_FILES
 				ON DELETE CASCADE
 				ON UPDATE CASCADE,
-	type		text,
-	director	text,
-	description	text
+	TYPE		TEXT,
+	DIRECTOR	TEXT,
+	DESCRIPTION	TEXT
 );
 
-CREATE TABLE schedules (
-	name		text primary key
+CREATE TABLE SCHEDULES (
+	NAME		TEXT PRIMARY KEY
 );
 
-CREATE TABLE content_schedule (
-	id		SERIAL PRIMARY KEY,
-	title 		text NOT NULL references av_files
+CREATE TABLE CONTENT_SCHEDULE (
+	ID		SERIAL PRIMARY KEY,
+	TITLE 		TEXT NOT NULL REFERENCES AV_FILES
 				ON DELETE CASCADE
 				ON UPDATE CASCADE,
-	schedule	text NOT NULL references schedules (name) 
+	SCHEDULE	TEXT DEFAULT 'Baycon 2005' REFERENCES SCHEDULES (NAME) 
 				ON DELETE CASCADE
 				ON UPDATE CASCADE,
-	listed		boolean DEFAULT true,
-	start_time	timestamp WITH TIME ZONE NOT NULL,
-	UNIQUE(start_time,schedule)
+	LISTED		BOOLEAN DEFAULT TRUE,
+	START_TIME	TIMESTAMP WITH TIME ZONE NOT NULL,
+	UNIQUE(START_TIME,SCHEDULE)
 );
 
-CREATE FUNCTION avfile_duration(text) RETURNS interval AS '
+CREATE FUNCTION AVFILE_DURATION(TEXT) RETURNS INTERVAL AS '
 DECLARE
-total_length INTERVAL;
-stitle ALIAS FOR $1;
+TOTAL_LENGTH INTERVAL;
+STITLE ALIAS FOR $1;
 BEGIN
-	select sum(duration) into total_length from av_file_component 
-		where title = stitle;
-	RETURN total_length;
+	SELECT SUM(DURATION) INTO TOTAL_LENGTH FROM AV_FILE_COMPONENT 
+		WHERE TITLE = STITLE;
+	RETURN TOTAL_LENGTH;
 END
-' LANGUAGE 'plpgsql';
+' LANGUAGE 'PLPGSQL';
 
-CREATE FUNCTION stop_time(text,timestamp with time zone) 
-RETURNS timestamp with time zone AS '
+CREATE FUNCTION STOP_TIME(TEXT,TIMESTAMP WITH TIME ZONE) 
+RETURNS TIMESTAMP WITH TIME ZONE AS '
 DECLARE
-stitle ALIAS FOR $1;
-start_time ALIAS FOR $2;
+STITLE ALIAS FOR $1;
+START_TIME ALIAS FOR $2;
 BEGIN
-	RETURN start_time + avfile_duration(stitle);
+	RETURN START_TIME + AVFILE_DURATION(STITLE);
 END
-' LANGUAGE 'plpgsql';
+' LANGUAGE 'PLPGSQL';
 
 
-CREATE FUNCTION check_overlap() RETURNS TRIGGER AS '
+CREATE FUNCTION CHECK_OVERLAP() RETURNS TRIGGER AS '
 BEGIN
-	IF EXISTS( SELECT id FROM content_schedule
-		WHERE schedule = NEW.schedule
-			AND id != NEW.id
-			AND overlaps(NEW.start_time, ( avfile_duration(NEW.title) + INTERVAL ''1 sec''), start_time, ( avfile_duration(title) + INTERVAL ''1 sec''))
+	IF EXISTS( SELECT ID FROM CONTENT_SCHEDULE
+		WHERE SCHEDULE = NEW.SCHEDULE
+			AND OID != NEW.OID
+			AND OVERLAPS(NEW.START_TIME, ( AVFILE_DURATION(NEW.TITLE) + INTERVAL ''1 SEC''), START_TIME, ( AVFILE_DURATION(TITLE) + INTERVAL ''1 SEC''))
 	)
 	THEN
-		RAISE EXCEPTION ''Schedule entry conflicts with existing entry'';
+		RAISE EXCEPTION ''SCHEDULE ENTRY CONFLICTS WITH EXISTING ENTRY'';
 	END IF;
 	RETURN NEW;
 END;
-' LANGUAGE 'plpgsql';
+' LANGUAGE 'PLPGSQL';
 
-CREATE TRIGGER content_check_overlap BEFORE INSERT OR UPDATE ON content_schedule
-	FOR EACH ROW EXECUTE PROCEDURE check_overlap();
+CREATE TRIGGER CONTENT_CHECK_OVERLAP BEFORE INSERT OR UPDATE ON CONTENT_SCHEDULE
+	FOR EACH ROW EXECUTE PROCEDURE CHECK_OVERLAP();
 
 
 ---
 --- Views
 ---
-CREATE OR REPLACE VIEW fills AS
-	SELECT title, avfile_duration(title) AS duration
-	FROM fill_shorts;
+CREATE OR REPLACE VIEW FILLS AS
+	SELECT TITLE, AVFILE_DURATION(TITLE) AS DURATION
+	FROM FILL_SHORTS;
 
 
 --
 -- Listing of movie contents
-CREATE OR REPLACE VIEW movies AS
-	SELECT title, avfile_duration(title) AS duration
-	FROM contents;
+CREATE OR REPLACE VIEW MOVIES AS
+	SELECT TITLE, AVFILE_DURATION(TITLE) AS DURATION
+	FROM CONTENTS;
 
 
-CREATE OR REPLACE VIEW schedule_times AS
+CREATE OR REPLACE VIEW SCHEDULE_TIMES AS
 	SELECT 
-		content_schedule.id as id,
-		content_schedule.title,
-		schedule,
-		start_time,
-		stop_time(content_schedule.title,start_time) AS stop_time,
-		description,
-		listed
-	FROM content_schedule,contents
-	WHERE contents.title = content_schedule.title;
+		CONTENT_SCHEDULE.ID AS ID,
+		CONTENT_SCHEDULE.TITLE,
+		SCHEDULE,
+		START_TIME,
+		STOP_TIME(CONTENT_SCHEDULE.TITLE,START_TIME) AS STOP_TIME,
+		DESCRIPTION,
+		LISTED
+	FROM CONTENT_SCHEDULE,CONTENTS
+	WHERE CONTENTS.TITLE = CONTENT_SCHEDULE.TITLE;
 	
 
-CREATE OR REPLACE VIEW schedule_times_raw AS
+CREATE OR REPLACE VIEW SCHEDULE_TIMES_RAW AS
 	SELECT 
-		id,
-	 	title,
-		schedule,
-		description,
-               	date_part('epoch', start_time) AS start_time,
-               	date_part('epoch', stop_time) AS stop_time,
-		listed
-	FROM schedule_times;
+		ID,
+	 	TITLE,
+		SCHEDULE,
+		DESCRIPTION,
+               	DATE_PART('epoch', START_TIME) AS START_TIME,
+               	DATE_PART('epoch', STOP_TIME) AS STOP_TIME,
+		LISTED
+	FROM SCHEDULE_TIMES;
 
 
 ---
 --- Permissions
 ---
-GRANT SELECT ON TABLE schedules TO apache;
-GRANT SELECT ON TABLE av_file_component TO apache;
-GRANT SELECT ON TABLE schedule_times TO apache;
-GRANT SELECT ON TABLE movies TO apache;
-GRANT SELECT ON TABLE fills TO apache;
-GRANT ALL ON TABLE content_schedule TO apache;
-GRANT ALL ON TABLE av_files TO apache;
-GRANT ALL ON TABLE content_schedule_id_seq TO apache;
+GRANT SELECT ON TABLE SCHEDULES TO APACHE;
+GRANT SELECT ON TABLE AV_FILE_COMPONENT TO APACHE;
+GRANT SELECT ON TABLE SCHEDULE_TIMES TO APACHE;
+GRANT SELECT ON TABLE MOVIES TO APACHE;
+GRANT SELECT ON TABLE FILLS TO APACHE;
+GRANT ALL ON TABLE CONTENT_SCHEDULE TO APACHE;
+GRANT ALL ON TABLE AV_FILES TO APACHE;
+GRANT ALL ON CONTENT_SCHEDULE_ID_SEQ TO APACHE;

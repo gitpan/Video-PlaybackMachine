@@ -1,13 +1,12 @@
-Video/PlaybackMachine version 0.01
+Video/PlaybackMachine version 0.04
 ==================================
 
 Video::PlaybackMachine. Instant television station. Just add content.
 
-Seriously, it's a multimedia scheduled playback system. You can
-schedule movies to be played at a specific time and date, and the
-system will play them back at that time. Whenever it's not playing
-scheduled content, it plays music and shows slides and "up next"
-informational screens.
+It's a multimedia scheduled playback system. You can schedule movies
+to be played at a specific time and date, and the system will play
+them back at that time. Whenever it's not playing scheduled content,
+it plays music and shows slides and "up next" informational screens.
 
 INSTALLATION
 
@@ -23,21 +22,17 @@ Then, to install the required Postgres database, type:
    createdb playback_machine
    psql -f sql/playback_machine_dd.sql
 
-Probably also a good idea to copy the contents of the php/ directory
-into a PHP-enabled directory someplace. Take care; the PHP scripts are
-simple, but I haven't reviewed them for security as
-yet. Password-protect them at least.
-   
 
 DEPENDENCIES
 
 This module requires these other modules and libraries:
 
   xine-lib, available from http://xinehq.de
-  postgresql
+  postgresql server
   
 Plus the CPAN modules:
 
+ AppConfig
  Video::Xine
  X11::FullScreen
  POE
@@ -45,11 +40,11 @@ Plus the CPAN modules:
  Test::MockObject
  Log::Log4perl
  Image::Imlib2
- 
+ DBD::Pg
 
 COPYRIGHT AND LICENCE
 
-Copyright (C) 2003-2005 Stephen Nelson
+Copyright (C) 2003-2007 Stephen Nelson <stephenenelson@mac.com>
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself. 
