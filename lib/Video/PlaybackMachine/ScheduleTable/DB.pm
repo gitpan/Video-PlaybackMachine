@@ -7,6 +7,7 @@ package Video::PlaybackMachine::ScheduleTable::DB;
 ####
 
 use strict;
+use warnings;
 use DBI;
 use Carp;
 use Date::Manip;
@@ -18,9 +19,6 @@ use Video::PlaybackMachine::ScheduleEntry;
 use Video::PlaybackMachine::Config;
 use Video::PlaybackMachine::DB;
 
-############################## Class Constants #####################################
-
-our $Database_Name = Video::PlaybackMachine::Config->config->database();
 
 ############################## Class Methods #######################################
 
@@ -353,3 +351,5 @@ sub finished {
 }
 
 1;
+
+__END__

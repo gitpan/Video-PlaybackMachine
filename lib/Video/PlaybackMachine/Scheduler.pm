@@ -3,7 +3,7 @@ package Video::PlaybackMachine::Scheduler;
 ####
 #### Video::PlaybackMachine::Scheduler
 ####
-#### $Revision: 437 $
+#### $Revision: 677 $
 ####
 #### Plays movies in the ScheduleTable at the appropriate times.
 ####
@@ -15,6 +15,7 @@ use POE;
 use POE::Session;
 use Log::Log4perl;
 use Date::Manip;
+use POSIX 'INT_MAX';
 
 use Video::PlaybackMachine::Player qw(PLAYER_STATUS_PLAY);
 use Video::PlaybackMachine::ScheduleView;
@@ -47,8 +48,6 @@ use constant FILL_MODE => 2;
 # Playing scheduled content
 use constant PLAY_MODE => 3;
 
-# Clock resolution: how often we'll update our apparent clock in the process table (seconds)
-use constant TIME_TICK => 5;
 
 ############################## Class Methods ##############################
 
@@ -62,6 +61,8 @@ use constant TIME_TICK => 5;
 ##  player => Video::PlaybackMachine::Player (optional)
 ##  filler => Video::PlaybackMachine::Filler (optional)
 ##  skip_tolerance => integer: seconds (optional)
+##  terminate_on_finish => boolean (default: true)
+##  run_forever => boolean (default: false)
 ##
 sub new {
   my $type = shift;
@@ -69,10 +70,13 @@ sub new {
 
   defined $in{schedule_table} or croak "Argument 'schedule_table' required; stopped";
   defined $in{skip_tolerance} or $in{skip_tolerance} = DEFAULT_SKIP_TOLERANCE;
+  defined $in{'terminate_on_finish'} or $in{'terminate_on_finish'} = 1;
+  defined $in{'run_forever'} or $in{'run_forever'} = 0;
 
 
   my $self = {
-	      terminate_on_finish => 1,
+	      terminate_on_finish => $in{'terminate_on_finish'},
+	      run_forever => $in{'run_forever'},
 	      skip_tolerance => $in{skip_tolerance},
 	      schedule_table => $in{schedule_table},
 	      player => $in{player} || Video::PlaybackMachine::Player->new(),
@@ -97,6 +101,7 @@ sub spawn {
   my $self = shift;
 
   POE::Session->create(
+
 		       object_states => [ 
 					 $self => [qw(_start time_tick finished update play_scheduled warning_scheduled schedule_next shutdown wait_for_scheduled query_next_scheduled)]
 					],
@@ -180,7 +185,13 @@ sub get_next_entry {
 
 sub get_time_to_next {
   my $self = shift;
-  return $self->{schedule_view}->get_time_to_next(@_);
+  my $schedule_to_next = $self->{schedule_view}->get_time_to_next(@_);
+  if ( (! defined($schedule_to_next) ) && $self->{'run_forever'} ) {
+    return INT_MAX;
+  }
+  else {
+    return $schedule_to_next;
+  }
 }
 
 sub schedule_to_real {
@@ -238,7 +249,7 @@ sub _start {
   $heap->{filler_session} = $self->{filler}->spawn();
 
   # Start the time ticker
-  $kernel->delay('time_tick', TIME_TICK);
+  $kernel->delay('time_tick', Video::PlaybackMachine::Config->config()->time_tick() );
 
   # Check the database for things that need playing
   $kernel->yield('update');
@@ -254,7 +265,7 @@ sub time_tick
 {
 	my $time = $_[OBJECT]->real_to_schedule(time());
 	$0 = "playback_machine: " . scalar localtime($time) . "($time)";
-	$_[KERNEL]->delay('time_tick', TIME_TICK);
+	$_[KERNEL]->delay('time_tick', Video::PlaybackMachine::Config->config()->time_tick());
 }
 
 ##

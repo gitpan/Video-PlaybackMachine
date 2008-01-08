@@ -45,8 +45,9 @@ MAIN: {
 			open(STDERR, '>>' . $config->stderr_log())
 				or die "Couldn't open '" . $config->stderr_log() ."' for STDERR log: $!; stopped";
 
-			Log::Log4perl::init(
-				$config->log_config_file()
+			Log::Log4perl::init( \(
+				$config->log_config()
+                          )
 			);
 
 

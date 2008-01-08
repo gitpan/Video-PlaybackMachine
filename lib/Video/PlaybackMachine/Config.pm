@@ -40,7 +40,7 @@ BEGIN {
 		my $type = shift;
 		defined $config and return $config;
 
-		$config = $type->new( GLOBAL => { EXPAND => EXPAND_ALL } );
+		$config = $type->new( { GLOBAL => { EXPAND => EXPAND_ALL }  } );
 
 		$config->define(
 			'database',
@@ -89,7 +89,7 @@ BEGIN {
 		
 		$config->define( 'stderr_log=s' );
 
-		$config->define( 'log_config_file=s' );
+		$config->define( 'log_config=s' );
 
 		foreach my $config_file (@Config_Files) {
 			-e $config_file or next;
@@ -98,6 +98,8 @@ BEGIN {
 		}
 		
 		$config->define( 'x_display=s', { DEFAULT => ':0.0' } );
+
+		$config->define( 'time_tick=i', { DEFAULT => 5 });
 
 		$config->getopt();
 
@@ -129,7 +131,7 @@ sub init_logging {
 
   my $config = $type->config();
 
-  Log::Log4perl::init_once( $config->log_config_file() );
+  Log::Log4perl::init_once( \ ( $config->log_config() ) );
 
 }
 

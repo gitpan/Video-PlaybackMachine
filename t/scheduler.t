@@ -1,20 +1,15 @@
-# Before `make install' is performed this script should be runnable with
-# `make test'. After `make install' it should work as `perl 1.t'
-
-#########################
-
-# change 'tests => 1' to 'tests => last_test_to_print';
-
 use strict;
+use warnings;
+
 use lib qw{lib t/lib};
 
-#use Test::More tests => 10;
+#use Test::More tests => 9;
 use Test::More skip_all => 'Need to find POE::Component::MockSession';
 BEGIN { use_ok('Video::PlaybackMachine::Scheduler') };
 
 use Test::MockObject;
 use POE;
-#use POE::Component::MockSession;
+use POE::Component::MockSession;
 use Video::PlaybackMachine::MockScheduleTable qw(mock_schedule_table);
 
 use Video::PlaybackMachine::AVFile;
@@ -22,8 +17,15 @@ use Video::PlaybackMachine::ScheduleEntry;
 use Video::PlaybackMachine::Scheduler;
 
 use Data::Dumper;
+use Log::Log4perl;
 
 #########################
+
+Log::Log4perl::init( \'log4perl.logger.Video = OFF, Screen
+log4perl.appender.Screen = Log::Log4perl::Appender::Screen
+log4perl.appender.Screen.layout = Log::Log4perl::Layout::SimpleLayout
+' );
+
 
 MAIN: {
 
@@ -44,7 +46,7 @@ MAIN: {
 							 filler => $mock_filler
 							);
 
-  is($scheduler->get_time_to_next($now + 60), 5, "get_time_to_next");
+  is($scheduler->get_time_to_next(), 20, "get_time_to_next");
 
 
   $scheduler->spawn();
@@ -56,8 +58,10 @@ MAIN: {
   is(scalar $mock_player->get_calls('play'), 5, 'Number of times Player got called');
 
   # Check fill calls and args against expected time
-  compare_calltimes($mock_filler, 'start_fill', $now, [ 10 ]);
-
+ SKIP: {
+      skip('Need to reconstruct MockSession', 1);
+      compare_calltimes($mock_filler, 'start_fill', $now, [ 10 ]);
+  }
 }
 
 ##
@@ -79,12 +83,16 @@ sub compare_calltimes {
 
   my @calltimes = map { $_->[0] } ($mock_session->get_calls($state));
 
-  is(scalar(@calltimes), scalar(@$times), "Number of calls for state '$state'" );
 
-  for (my $idx = 0; $idx < scalar(@calltimes); $idx++) {
+  for (my $idx = 0; $idx < scalar(@$times); $idx++) {
     my $act_diff = abs($calltimes[$idx] - $now);
-    ok( abs( $act_diff - $times->[$idx] ) < $tolerance,
-	"For state '$state': call time '$act_diff' - '$times->[$idx]' within tolerance" );
+    if (defined $times->[$idx]) {
+	ok( abs( $act_diff - $times->[$idx] ) < $tolerance,
+	    "For state '$state': call time '$act_diff' - '$times->[$idx]' within tolerance" );
+    }
+    else {
+	fail("Missing time entry");
+    }
   }
 
 }
