@@ -16,7 +16,7 @@ use Video::PlaybackMachine::FillSegment;
 use Video::PlaybackMachine::Filler;
 use Video::PlaybackMachine::Scheduler;
 
-use constant TEST_FILE => 't/test_movies/time_015.m2v';
+use constant TEST_FILE => 't/test_movies/time_015.mp4';
 use constant TEST_STILL => 't/test_movies/test_logo.png';
 
 MAIN: {

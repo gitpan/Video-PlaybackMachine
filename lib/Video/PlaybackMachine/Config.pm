@@ -4,22 +4,6 @@ use strict;
 use warnings;
 use diagnostics;
 
-
-
-=pod
-
-=head1 NAME
-
-Video::PlaybackMachine::Config
-
-=head1 DESCRIPTION
-
-Provides configuration values for Video::PlaybackMachine. This manual describes the configuration values available.
-
-=head1 
-
-=cut
-
 use AppConfig qw(:expand :argcount);
 our @ISA = qw(AppConfig);
 
@@ -100,6 +84,8 @@ BEGIN {
 		$config->define( 'x_display=s', { DEFAULT => ':0.0' } );
 
 		$config->define( 'time_tick=i', { DEFAULT => 5 });
+
+		$config->define( 'daemonize!', { DEFAULT => 1 } );
 
 		$config->getopt();
 
@@ -200,3 +186,149 @@ sub get_fill {
 }
 
 1;
+
+__END__
+
+=head1 NAME
+
+Video::PlaybackMachine::Config -- Configuration for Video::PlaybackMachine
+
+=head1 DESCRIPTION
+
+Provides configuration values for Video::PlaybackMachine. Inherits
+from AppConfig.
+
+=head1 METHODS
+
+=head2 CLASS METHODS
+
+=head3 config()
+
+Puts together a config object from the configuration file and
+command-line parameters and returns it.
+
+=head2 OBJECT METHODS
+
+=head3 get_player_backend()
+
+Returns the Video::PlaybackMachine::PlayerBackEnd object defined in
+the configuration, or dies trying.
+
+=head3 init_logging()
+
+Initializes Log::Log4perl based on the 'log_config' parameter.
+
+=head3 get_fill()
+
+Creates the Video::PlaybackMachine::Filler object based on the
+configuration and returns it.
+
+
+=head1 CONFIGURATION PARAMETERS
+
+=head3 database
+
+Name of the database. Defaults to 'playback_machine'
+
+=head3 schedule
+
+String.
+
+Name of the schedule this instance is running.
+
+=head3 stills
+
+String.
+
+=head3 music
+
+String.
+
+=head3 fill
+
+List of strings.
+
+=head3 restart_interval
+
+Integer. 
+
+Number of seconds between automated restarts.
+
+=head3 logo
+
+String. 
+
+Filename of logo.
+
+=head3 start
+
+String.
+
+=head3 offset
+
+Integer.
+
+Number of seconds to offset from current time.
+
+Default: 0
+
+=head3 skip_tolerance
+
+Maximum number of seconds to allow skipping of a movie without
+considering it unplayable and going to idle.
+
+Default: 15
+
+=head3 max_slides
+
+Integer.
+
+Maximum number of slides to play in a row.
+
+Default: 5
+
+=head3 player_backend_class
+
+String.
+
+Name of the PlayerBackEnd class to use during playback.
+
+Default: 'XineBackEnd'
+
+=head3 player_verbose
+
+Integer.
+
+Default: 0
+
+=head3 stderr_log
+
+String.
+
+Filename to which we'll redirect stderr in daemon mode.
+
+=head3 log_config
+
+String.
+
+Configuration text block for Log::Log4perl.
+
+=head3 x_display
+
+String.
+
+The value of the X display to be used by X11::FullScreen.
+
+Default: :0.0
+
+=head3 time_tick
+
+Integer.
+
+The scheduler will update the 'clock' in the process name (visible in
+ps display) every C<time_tick> seconds.
+
+Default: 5
+
+=cut
+

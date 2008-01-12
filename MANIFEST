@@ -7,12 +7,10 @@ bin/fix_durations.pl
 bin/playback_machine.pl
 bin/show_missing.pl
 blackboxtests/filler_test.pl
-build_rpm.sh
 ChangeLog
 conf/logrotate
 conf/playback_machine.conf
 INSTALL
-install.sh
 lib/Video/PlaybackMachine.pm
 lib/Video/PlaybackMachine/AbstractListable.pm
 lib/Video/PlaybackMachine/AVFile.pm
@@ -78,5 +76,5 @@ t/test_movies/test_logo.png
 t/test_movies/test_logo_small.png
 t/test_movies/time_015.m2v
 t/time_manager.t
-test_movies/time_015.m2v
+test_movies/time_015.mp4
 META.yml                                 Module meta-data (added by MakeMaker)

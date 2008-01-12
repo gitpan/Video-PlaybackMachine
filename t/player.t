@@ -10,7 +10,7 @@ BEGIN { use_ok('Video::PlaybackMachine::Player') };
 
 
 ## NOTE: Test movie from ftp.tek.com/tv/test/streams
-use constant TEST_MOVIE_1 => 't/test_movies/time_015.m2v';
+use constant TEST_MOVIE_1 => 't/test_movies/time_015.mp4';
 
 ## Still frame
 use constant TEST_STILL => 't/test_movies/test_logo.png';

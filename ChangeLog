@@ -1,5 +1,17 @@
+2008-01-09  Stephen Nelson  <stephenenelson@mac.com>
+
+	* Bumped version to '0.06'
+	* Documented configuration in Video::PlaybackMachine::Config
+	* Refactored much of playback_machine.pl into run() method on V::PM object
+	* Added better general description of PlaybackMachine to V::PM docs
+	* Added new --no-daemonize option
+	* Set up default config file to use '${HOME}' rather than hardcoded to my home directory, and otherwise genericized
+	* Moved script installation to Makefile.PL; eliminated install.sh
+
+
 2008-01-07  Stephen Nelson  <stephenenelson@mac.com>
 
+	* Bumped version to '0.05'
 	* Moved "Changes" to "ChangeLog"
 	* Enabled expansions in configuration file
 	* Inlined Log4perl configuration file
