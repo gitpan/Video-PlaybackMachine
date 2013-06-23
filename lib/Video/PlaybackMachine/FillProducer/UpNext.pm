@@ -3,7 +3,7 @@ package Video::PlaybackMachine::FillProducer::UpNext;
 ####
 #### Video::PlaybackMachine::FillProducer::UpNext
 ####
-#### $Revision: 267 $
+#### $Revision$
 ####
 
 use strict;
@@ -48,7 +48,7 @@ sub add_text {
     or return;
   my $next_time = strftime '%l:%M', localtime ($entry->get_start_time());
 
-  $self->write_centered($image, "Up Next:\n\n" . $entry->getTitle()  ."\n\n$next_time");
+  $self->write_centered($image, "Up Next:\n\n" . $entry->get_title()  ."\n\n$next_time");
 
 
 }

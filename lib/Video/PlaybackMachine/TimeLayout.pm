@@ -3,7 +3,7 @@ package Video::PlaybackMachine::TimeLayout;
 ####
 #### Interface: Video::PlaybackMachine::TimeLayout
 ####
-#### $Revision: 145 $
+#### $Revision$
 ####
 #### The one-dimensional equivalent of a Java LayoutManager.
 #### Tells us the minimum and preferred times that a bit of Java

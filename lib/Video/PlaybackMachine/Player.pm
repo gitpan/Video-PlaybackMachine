@@ -15,7 +15,9 @@ our @EXPORT_OK = qw(PLAYER_STATUS_STOP PLAYER_STATUS_PLAY PLAYER_STATUS_STILL
 use POE;
 use X11::FullScreen;
 use Video::Xine;
+use Video::Xine::Stream qw/:status_constants/;
 use Video::PlaybackMachine::EventWheel::FullScreen;
+use Video::PlaybackMachine::Player::EventWheel;
 use Video::PlaybackMachine::Config;
 use Log::Log4perl;
 use Carp;
@@ -33,8 +35,6 @@ use constant PLAYBACK_OK => 1;
 
 # ERROR == problem in trying to play
 use constant PLAYBACK_ERROR => 2;
-
-use constant X_DISPLAY => Video::PlaybackMachine::Config->config()->x_display();
 
 ## Types of playback
 use constant PLAYBACK_TYPE_MUSIC => 0;
@@ -68,7 +68,8 @@ sub _start {
   my $kernel = $_[KERNEL];
 
   $kernel->alias_set('Player');
-  my $display = X11::FullScreen::Display->new(X_DISPLAY);
+  my $x_display = Video::PlaybackMachine::Config->config()->x_display();
+  my $display = X11::FullScreen::Display->new($x_display);
   $_[HEAP]->{'display'} = $display;
   $_[HEAP]->{'window'} = $display->createWindow();
   $display->sync();
@@ -84,7 +85,7 @@ sub _start {
 						      $display->getPixelAspect()
 						     );
 	# TODO Move "auto" to config file
-  my $driver = Video::Xine::Driver::Video->new($xine,"auto",1,$x11_visual);
+  my $driver = Video::Xine::Driver::Video->new($xine,"auto",1,$x11_visual, $display);
   my $s = $xine->stream_new(undef, $driver)
     or croak "Unable to open video stream";
   $_[OBJECT]->{'stream'} = $s;
@@ -102,7 +103,9 @@ sub _start {
 
 ##
 ## Responds to a 'play' request by playing a movie on Xine.
+##
 ## Arguments:
+##
 ##   ARG0: $postback -- what to call after the play is completed
 ##   ARG1: $offset -- number of seconds after the movie's start to begin
 ##   ARG2: @filenames -- ARG1 onward contains the files to play, in order.
@@ -178,9 +181,8 @@ sub stop {
 ## Arguments:
 ##   STILL_FILE: Filename of our stillstore.
 ## 
-## Responds to a 'play_still' request by playing a still frame
-## on Xine. The stillframe will remain there until something
-## replaces it.
+## Responds to a 'play_still' request by playing a still frame. The
+## stillframe will remain there until something replaces it.
 ##
 sub play_still {
   my ($self, $kernel, $heap, $still, $callback, $time) = @_[OBJECT, KERNEL, HEAP, ARG0, ARG1];
@@ -317,92 +319,28 @@ sub get_status {
 }
 
 
-package Video::PlaybackMachine::Player::EventWheel;
+1;
 
-# TODO: Make a subclass of EventWheel
+__END__
 
-###
-### When spawned, these will pass along events from the given
-### streams to the appropriate callbacks.
-###
+=head1 NAME
 
-use strict;
-use POE;
-use Video::Xine;
+Video::PlaybackMachine::Player - POE component to play movies
 
-## How often to check to see if Xine has stopped, in seconds
-use constant XINE_CHECK_INTERVAL_SECS => 2;
+=head1 SYNOPSIS
 
-sub new {
-  my $type = shift;
-  my ($stream, %handlers) = @_;
+  use Video::PlaybackMachine::Player;
 
-  my $self = {
-	      type => $type,
-	      stream => $stream,
-	      handlers => { %handlers },
-	      queue => undef,
-	      logger => Log::Log4perl->get_logger('Video.PlaybackMachine.Player.EventWheel'),	     
-	     };
+  my $player = Video::PlaybackMachine::Player->new();
 
-  $self->{queue} = Video::Xine::Event::Queue->new($self->{'stream'})
-    or die "Couldn't create Xine::Event::Queue";
+  # Start the Player session
+  $player->spawn();
 
-  bless $self, $type;
-}
+  # Then, in another session...
+  $kernel->post('Player', 'play', sub { "Finished"; }, 0, 'mymovie.mp4');
 
-sub spawn {
-  my $self = shift;
-  my ($callback) = @_;
-
-  POE::Session->create(
-		       object_states => [$self=>[qw(_start get_events)]]
-		      );
-}
-
-sub _start {
-  my ($self, $heap, $kernel) = @_[OBJECT, HEAP, KERNEL];
-
-  $kernel->yield('get_events');
-}
+  # Is the movie still running?
+  print "Playing\n" if $player->get_status() == PLAYER_STATUS_PLAY;
 
 
-sub clear_events {
-	my $self = shift;
-		
-	1 while $self->{queue}->get_event();	
-}
-
-sub get_events {
-  my ($self, $heap, $kernel) = @_[OBJECT, HEAP, KERNEL];
-
-  # Translate all events into callbacks
-  while ( my $event = $self->{queue}->get_event() ) {
-    $self->{'logger'}->debug("Received event: ", $event->get_type(), "\n");
-    if ( $event->get_type() == XINE_EVENT_UI_PLAYBACK_FINISHED ) {
-      $self->{'stream'}->close();
-    }
-    if ( exists $self->{'handlers'}{$event->get_type()} ) {
-      $self->{'logger'}->debug("Invoking handler for ", $event->get_type(), "\n");
-      $self->{'handlers'}{$event->get_type()}->($self->{'stream'}, $event);
-    }
-  }
-
-  # Keep checking so long as we're playing
-  if ( $self->{'stream'}->get_status() == XINE_STATUS_PLAY ) {
-    $kernel->delay('get_events', XINE_CHECK_INTERVAL_SECS);
-  }
-}
-
-sub set_handler {
-  my $self = shift;
-  my ($event, $callback) = @_;
-  $self->{'handlers'}{$event} = sub { $callback->($_[0], Video::PlaybackMachine::Player::PLAYBACK_OK) };
-}
-
-
-# Convenience method
-sub set_stop_handler {
-  $_[0]->set_handler(XINE_EVENT_UI_PLAYBACK_FINISHED, $_[1]);
-}
-
+=cut

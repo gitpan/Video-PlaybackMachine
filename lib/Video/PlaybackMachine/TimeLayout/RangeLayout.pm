@@ -3,7 +3,7 @@ package Video::PlaybackMachine::TimeLayout::RangeLayout;
 ####
 #### Video::PlaybackMachine::TimeLayout::RangeLayout
 ####
-#### $Revision: 187 $
+#### $Revision$
 ####
 #### A TimeLayout that indicates that the FillProducer can produce
 #### content for a certain minimum and a certain maximum amount of

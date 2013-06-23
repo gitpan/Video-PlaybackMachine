@@ -3,7 +3,7 @@ package Video::PlaybackMachine::Movie;
 ####
 #### Video::PlaybackMachine::Movie
 ####
-#### $Revision: 179 $
+#### $Revision$
 ####
 #### Represents a movie on the schedule.
 ####
@@ -12,7 +12,6 @@ use strict;
 use warnings;
 use diagnostics;
 
-use base 'Video::PlaybackMachine::AbstractListable';
 use POE;
 use Carp;
 
@@ -24,13 +23,14 @@ use UNIVERSAL qw(isa);
 ## new()
 ##
 ## Arguments: hash
-##   (superclass arguments)
+##   title: string
+##   description: string
 ##   av_files: arrayref -- list of Video::PlaybackMachine::AVFile objects
 ##
 sub new {
   my $type = shift;
   my %in = @_;
-  my $self = $type->SUPER::new(@_);
+
   UNIVERSAL::isa($in{av_files}, 'ARRAY')
     or croak("${type}::new(): Argument '$in{av_files}' for 'av_files' must be an array reference; stopped");
   @{ $in{av_files} } > 0
@@ -39,12 +39,19 @@ sub new {
     UNIVERSAL::isa($_, 'Video::PlaybackMachine::AVFile')
       or croak("$type::new(): Argument '$_' is not an AVFile object");
   }
-  $self->{av_files} = [ @{ $in{av_files} } ];
+
+  my $self = {
+	      title => $in{title},
+	      description => $in{description},
+	      av_files => [ @{ $in{av_files} } ]
+	     };
+
+  bless $self, $type;
 
   return $self;
 }
 
-############################## Class Methods ##############################
+############################## Object Methods ##############################
 
 ##
 ## get_length()
@@ -111,8 +118,23 @@ sub get_av_files {
   return @{ $self->{av_files} };
 }
 
+##
+## get_title()
+##
+## Returns the title of the item.
+##
+sub get_title { 
+  return $_[0]->{'title'};
+}
 
-############################# Object Methods ##############################
+##
+## get_description()
+##
+## Returns a description of the item.
+##
+sub get_description { 
+  return $_[0]->{'description'};
+}
 
 
 

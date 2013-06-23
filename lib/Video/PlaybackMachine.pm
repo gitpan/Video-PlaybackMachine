@@ -4,7 +4,7 @@ use 5.008;
 use strict;
 use warnings;
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
 use POE;
 use POE::Kernel;
@@ -158,6 +158,8 @@ playback_machine.pl(1)
 xine-lib, http://www.xinehq.de
 
 L<Video::Xine>
+
+"How Perl Saved BayCon TV", http://perlmonks.org/?node_id=601001
 
 =head1 AUTHOR
 

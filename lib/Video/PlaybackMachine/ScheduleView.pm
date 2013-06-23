@@ -3,7 +3,7 @@ package Video::PlaybackMachine::ScheduleView;
 ####
 #### Video::PlaybackMachine::ScheduleView
 ####
-#### $Revision: 257 $
+#### $Revision$
 ####
 #### Translates between the times listed in a schedule
 #### and the current time.

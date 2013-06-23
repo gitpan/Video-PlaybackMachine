@@ -3,7 +3,7 @@ package Video::PlaybackMachine::TimeLayout::FixedTimeLayout;
 ####
 #### Video::PlaybackMachine::TimeLayout::FixedTimeLayout
 ####
-#### $Revision: 149 $
+#### $Revision$
 ####
 #### A TimeLayout that indicates that a certain FillProducer only
 #### wants to generate content for a fixed amount of time. 

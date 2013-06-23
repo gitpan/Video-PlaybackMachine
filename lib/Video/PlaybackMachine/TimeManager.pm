@@ -3,7 +3,7 @@ package Video::PlaybackMachine::TimeManager;
 ####
 #### Video::PlaybackMachine::TimeManager
 ####
-#### $Revision: 405 $
+#### $Revision$
 ####
 #### Tells us what FillSegment to play next in a particular break.
 #### Keeps track of what has been played.

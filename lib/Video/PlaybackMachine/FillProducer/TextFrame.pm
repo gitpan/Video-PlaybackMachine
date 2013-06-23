@@ -3,7 +3,7 @@ package Video::PlaybackMachine::FillProducer::TextFrame;
 ####
 #### Video::PlaybackMachine::FillProducer::TextFrame
 ####
-#### $Revision: 265 $
+#### $Revision$
 ####
 
 use strict;
@@ -47,6 +47,7 @@ sub new {
   my %in = @_;
   $self->{'font'} = defined $in{font} ? $in{font} : $Font;
   $self->{'font_size'} = defined $in{font_size} ? $in{font_size} : $Font_Size;
+  $self->{'font_path'} = defined $in{'font_path'} ? $in{'font_path'} : \@Font_Path;
   return $self;
 }
 
@@ -101,7 +102,7 @@ sub create_image {
   $image->fill_rectangle(0,0,$Width,$Height);
   
   $image->set_color(@Text_Color);
-  $image->add_font_path(@Font_Path);
+  $image->add_font_path(@{ $self->{'font_path'} });
   $image->load_font($self->get_font_string() );
 
   return $image;

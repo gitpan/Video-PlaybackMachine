@@ -3,7 +3,7 @@ package Video::PlaybackMachine::FillProducer::NextSchedule;
 ####
 #### Video::PlaybackMachine::FillProducer::NextSchedule
 ####
-#### $Revision: 266 $
+#### $Revision$
 ####
 
 use strict;
@@ -56,7 +56,7 @@ sub add_text {
 								   );
   foreach my $entry (@$entries) {
     my $next_time = strftime '%l:%M', localtime ($entry->get_start_time());
-    $table->add_row($next_time, $entry->getTitle())
+    $table->add_row($next_time, $entry->get_title())
       or last;
   }
 

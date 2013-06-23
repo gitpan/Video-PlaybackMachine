@@ -3,7 +3,7 @@ package Video::PlaybackMachine::TimeLayout::GranularTimeLayout;
 ####
 #### Video::PlaybackMachine::TimeLayout::GranularTimeLayout
 ####
-#### $Revision: 195 $
+#### $Revision$
 ####
 #### A granular time layout is for producers like slide shows. A slide
 #### show that shows a slide for 5 seconds can fill 5, 10, 15

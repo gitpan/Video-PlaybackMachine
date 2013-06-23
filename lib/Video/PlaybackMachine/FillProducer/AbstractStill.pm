@@ -3,7 +3,7 @@ package Video::PlaybackMachine::FillProducer::AbstractStill;
 ####
 #### Video::PlaybackMachine::FillProducer::AbstractStill
 ####
-#### $Revision: 186 $
+#### $Revision$
 ####
 #### 
 ####

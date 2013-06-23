@@ -3,7 +3,7 @@ package Video::PlaybackMachine::FillProducer::Chooser;
 ####
 #### Video::PlaybackMachine::FillProducer::Chooser
 ####
-#### $Revision: 357 $
+#### $Revision$
 ####
 #### Picks content in random or quasi-random order. Does not pick
 #### anything twice until all have been chosen. Will preferentially display

@@ -3,7 +3,7 @@ package Video::PlaybackMachine::TestMovie;
 ####
 #### Video::PlaybackMachine::TestMovie
 ####
-#### $Revision: 321 $
+#### $Revision$
 ####
 #### Extension of Video::PlaybackMachine::Movie. Schedules
 #### a "finished" message for when it's supposed to end.

@@ -3,7 +3,7 @@ package Video::PlaybackMachine::DatabaseWatcher;
 ##
 ## Video::PlaybackMachine::DatabaseWatcher
 ##
-## $Revision: 243 $
+## $Revision$
 ##
 ## Signals the Scheduler when the database has been updated.
 ##

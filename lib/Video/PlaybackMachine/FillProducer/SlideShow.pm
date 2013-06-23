@@ -3,7 +3,7 @@ package Video::PlaybackMachine::FillProducer::SlideShow;
 ####
 #### Video::PlaybackMachine::FillProducer::SlideShow
 ####
-#### $Revision: 384 $
+#### $Revision$
 ####
 #### Plays a bunch of random photos. Since we need to do things
 #### at particular delay times, launches its own POE session.

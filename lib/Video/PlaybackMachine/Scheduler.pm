@@ -3,7 +3,7 @@ package Video::PlaybackMachine::Scheduler;
 ####
 #### Video::PlaybackMachine::Scheduler
 ####
-#### $Revision: 677 $
+#### $Revision$
 ####
 #### Plays movies in the ScheduleTable at the appropriate times.
 ####
@@ -302,7 +302,7 @@ sub update {
     # If there's something supposed to be playing
     if ( my $entry = $self->should_be_playing() ) {
 
-      $self->{'logger'}->debug("Time to play ", $entry->getTitle());
+      $self->{'logger'}->debug("Time to play $entry");
 
       # Play it
       $kernel->yield('play_scheduled', $entry->get_listing(), $self->get_seek($entry));
@@ -504,9 +504,9 @@ sub schedule_next {
     my $in_time = $alarm_offset - time();
 
     ($in_time >= 0) 
-      or $self->{'logger'}->logdie("Attempt to schedule '", $entry->getTitle(), "' in the past ($in_time) at ", scalar  localtime $alarm_offset);
+      or $self->{'logger'}->logdie("Attempt to schedule '", $entry->get_title(), "' in the past ($in_time) at ", scalar  localtime $alarm_offset);
 
-    $self->{'logger'}->info("scheduling: ", $entry->getTitle(), " at ", scalar localtime($alarm_offset), " in ", duration($in_time));
+    $self->{'logger'}->info("scheduling: ", $entry->get_title(), " at ", scalar localtime($alarm_offset), " in ", duration($in_time));
     $kernel->alarm( 'play_scheduled', $alarm_offset, $entry->get_listing(), 0 );
 
   } # End if there's something left

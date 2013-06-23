@@ -3,7 +3,7 @@ package Video::PlaybackMachine::FillProducer::RandomStillFrame;
 ####
 #### Video::PlaybackMachine::FillProducer::RandomStillFrame
 ####
-#### $Revision: 186 $
+#### $Revision$
 ####
 #### Plays a randomly-chosen still frame from a directory.
 ####

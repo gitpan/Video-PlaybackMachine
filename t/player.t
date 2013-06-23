@@ -5,7 +5,8 @@
 
 use strict;
 
-use Test::More skip_all => 'Need to work out player-test issues';
+#use Test::More tests => 6;
+use Test::More skip_all => 'Test never ends...';
 BEGIN { use_ok('Video::PlaybackMachine::Player') };
 
 
@@ -14,6 +15,15 @@ use constant TEST_MOVIE_1 => 't/test_movies/time_015.mp4';
 
 ## Still frame
 use constant TEST_STILL => 't/test_movies/test_logo.png';
+
+Log::Log4perl->init(\ <<EOF);
+log4perl.logger.Video		= DEBUG, ScreenAppender1
+
+log4perl.appender.ScreenAppender1 = Log::Log4perl::Appender::Screen
+log4perl.appender.ScreenAppender1.stderr = 1
+log4perl.appender.ScreenAppender1.layout = SimpleLayout
+EOF
+
 
 #########################
 
@@ -61,7 +71,7 @@ TESTS: {
 					 terminate => sub {
 					   my ($heap, $kernel) = @_[HEAP, KERNEL];
 					   ok( exists $heap->{length} && defined $heap->{length}, "Player said that it finished.");
-					   exit(0);
+#					   exit(0);
 					 }
 					}
 		      );
