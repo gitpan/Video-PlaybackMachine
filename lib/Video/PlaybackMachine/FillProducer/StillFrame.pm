@@ -50,7 +50,13 @@ sub new {
 sub start {
   my $self = shift;
 
-  $poe_kernel->post('Player', 'play_still', $self->{image});
+  $poe_kernel->post('Player', 'play_still', $self->{image}, sub {
+  	my ($rv) = @_;
+  	if ( $rv == 2 ) {
+  		$poe_kernel->delay('next_fill');
+  		$poe_kernel->yield('next_fill');
+  	}
+  });
   $poe_kernel->delay('next_fill', , $self->get_time_layout()->preferred_time());
 }
 

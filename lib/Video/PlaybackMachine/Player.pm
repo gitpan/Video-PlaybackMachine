@@ -185,7 +185,7 @@ sub stop {
 ## stillframe will remain there until something replaces it.
 ##
 sub play_still {
-  my ($self, $kernel, $heap, $still, $callback, $time) = @_[OBJECT, KERNEL, HEAP, ARG0, ARG1];
+  my ($self, $kernel, $heap, $still, $callback, $time) = @_[OBJECT, KERNEL, HEAP, ARG0, ARG1, ARG2];
   my $log = $self->{'logger'};
   if ($self->{'stream'}->get_status() == XINE_STATUS_PLAY
   	&& $heap->{'playback_type'} == PLAYBACK_TYPE_MOVIE 
@@ -199,7 +199,7 @@ sub play_still {
   };
   if ($@) {
     $log->error("Error displaying still '$still': $@");
-    $callback->(PLAYBACK_ERROR);
+    $callback->(PLAYBACK_ERROR) if $callback;
     return;
   }
 

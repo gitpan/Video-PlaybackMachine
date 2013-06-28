@@ -2,10 +2,6 @@
 
 use strict;
 use warnings;
-use diagnostics;
-
-use lib qw(t/lib ../t/lib);
-use blib;
 
 use POE;
 use POE::Kernel;

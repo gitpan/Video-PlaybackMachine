@@ -24,4 +24,8 @@ requires:
   Time::Duration: 0
   Video::Xine: 0.14
   X11::FullScreen: 0
-version: 0.07
+resources:
+  bugtracker: https://rt.cpan.org/Public/Dist/Display.html?Name=Video-PlaybackMachine
+  homepage: https://github.com///github.com/stephenenelson/video-playbackmachine/wiki
+  repository: git://github.com///github.com/stephenenelson/video-playbackmachine.git
+version: 0.08

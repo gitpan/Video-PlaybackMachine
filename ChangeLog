@@ -1,3 +1,9 @@
+2013-06-27  Stephen Nelson  <stephenenelson@mac.com>
+    * Version '0.08'
+    * Reenabled most scheduler.t tests
+    * Removed misuse of UNIVERSAL::isa
+    * Switched to dzil and git
+
 2008-01-12  Stephen Nelson  <stephenenelson@mac.com>
 
 	* Version '0.07'

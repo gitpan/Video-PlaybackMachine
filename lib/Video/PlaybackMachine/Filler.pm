@@ -11,7 +11,6 @@ package Video::PlaybackMachine::Filler;
 use strict;
 use warnings;
 use Carp;
-use UNIVERSAL 'isa';
 
 use POE;
 use POE::Session;
@@ -35,11 +34,11 @@ sub new {
   my $type = shift;
   my (%in) = @_;
 
-  isa($in{segments}, 'ARRAY')
+  (ref $in{segments} eq 'ARRAY')
     or croak($type, "::new() called improperly");
 
   foreach my $segment (@{ $in{segments} }) {
-    isa($segment, 'Video::PlaybackMachine::FillSegment')
+    ref $segment eq 'Video::PlaybackMachine::FillSegment'
       or croak($type, "::new: option 'segments' contains '$segment')");
   }
 

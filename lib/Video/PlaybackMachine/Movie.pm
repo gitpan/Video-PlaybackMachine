@@ -15,8 +15,6 @@ use diagnostics;
 use POE;
 use Carp;
 
-use UNIVERSAL qw(isa);
-
 ############################# Class Constants #############################
 
 ##
@@ -31,12 +29,13 @@ sub new {
   my $type = shift;
   my %in = @_;
 
-  UNIVERSAL::isa($in{av_files}, 'ARRAY')
-    or croak("${type}::new(): Argument '$in{av_files}' for 'av_files' must be an array reference; stopped");
+  unless (ref $in{'av_files'} && ref $in{'av_files'} eq 'ARRAY') {
+  	croak("${type}::new(): Argument '$in{av_files}' for 'av_files' must be an array reference; stopped");
+  }
   @{ $in{av_files} } > 0
     or confess("${type}::new(): Must have at least one AV::File object");
   foreach (@{ $in{av_files} } ){
-    UNIVERSAL::isa($_, 'Video::PlaybackMachine::AVFile')
+    ( ref $_ && ref $_ eq 'Video::PlaybackMachine::AVFile' )
       or croak("$type::new(): Argument '$_' is not an AVFile object");
   }
 
