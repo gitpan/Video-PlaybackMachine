@@ -1,55 +1,61 @@
 package Video::PlaybackMachine::FillProducer::TextFrame;
 
+our $VERSION = '0.09'; # VERSION
+
 ####
 #### Video::PlaybackMachine::FillProducer::TextFrame
 ####
 #### $Revision$
 ####
 
-use strict;
-use warnings;
+use Moo;
 use Carp;
 
-use base 'Video::PlaybackMachine::FillProducer::AbstractStill';
 use POE;
 
 use Image::Imlib2;
 use File::Temp qw(tempfile);
 use POSIX qw(strftime);
 
-############################# Class Constants #############################
+with 'Video::PlaybackMachine::FillProducer::AbstractStill',
+	'Video::PlaybackMachine::Logger';
 
-our $Width = 800;
-our $Height = 600;
+############################# Parameters #############################
 
-our @Background_Color = (0,0,100,255);
+has 'width' => (
+	'is' => 'ro',
+	'default' => 800
+);
 
-our @Text_Color = (0,255,255,255);
+has 'height' => (
+	'is' => 'ro',
+	'default' => 600
+);
 
-our @Font_Path = qw(/usr/share/fonts/bitstream-vera);
+has 'background_color' => (
+	'is' => 'ro',
+	'default' => sub { return [ 0,0,100,255 ] }
+);
 
-our $Font = "Vera";
+has 'text_color' => (
+	'is' => 'ro',
+	'default' => sub { return [0,255,255,255] }
+);
 
-our $Font_Size = "40";
+has 'font_path' => (
+	'is' => 'ro',
+	'default' => sub { return [ qw(/usr/share/fonts/truetype/ubuntu-font-family) ] }
+);
 
-############################## Class Methods ##############################
+has 'font' => (
+	'is' => 'ro',
+	'default' => 'FreeMono'
+);
 
-##
-## new()
-##
-## Arguments: (hash)
-##  font => string  -- name of truetype font (i.e "Vera")
-##  font_size => integer -- size of truetype font
-##
-sub new {
-  my $type = shift;
-  my $self = $type->SUPER::new(@_);
-  my %in = @_;
-  $self->{'font'} = defined $in{font} ? $in{font} : $Font;
-  $self->{'font_size'} = defined $in{font_size} ? $in{font_size} : $Font_Size;
-  $self->{'font_path'} = defined $in{'font_path'} ? $in{'font_path'} : \@Font_Path;
-  return $self;
-}
+has 'font_size' => (
+	'is' => 'ro',
+	'default' => 40
+);
 
 
 ############################# Object Methods ##############################
@@ -72,21 +78,13 @@ sub start {
   # Scurvy trick-- passing the filehandle as an unused argument so that 
   # it will survive as long as the event does.
   $poe_kernel->post('Player', 'play_still', $filename, undef, undef, $fh);
-  $poe_kernel->delay('next_fill', , $self->get_time_layout()->preferred_time());
+  $poe_kernel->delay('next_fill', , $self->time_layout()->preferred_time());
 
-}
-
-sub get_font {
-  return $_[0]{'font'};
-}
-
-sub get_font_size {
-  return $_[0]{'font_size'};
 }
 
 sub get_font_string {
   my $self = shift;
-  return $self->get_font() . '/' . $self->get_font_size();
+  return $self->font() . '/' . $self->font_size();
 }
 
 
@@ -96,13 +94,13 @@ sub get_font_string {
 sub create_image {
   my $self = shift;
 
-  my $image = Image::Imlib2->new($Width, $Height);
+  my $image = Image::Imlib2->new($self->width, $self->height);
   
-  $image->set_color(@Background_Color);
-  $image->fill_rectangle(0,0,$Width,$Height);
+  $image->set_color(@{ $self->background_color });
+  $image->fill_rectangle(0,0,$self->width() ,$self->height());
   
-  $image->set_color(@Text_Color);
-  $image->add_font_path(@{ $self->{'font_path'} });
+  $image->set_color(@{ $self->text_color() });
+  $image->add_font_path(@{ $self->font_path() });
   $image->load_font($self->get_font_string() );
 
   return $image;
@@ -164,8 +162,8 @@ sub write_centered {
   my ($image, $text) = @_;
 
   my ($words_height, @lines) = wrap_words($image, $text);
-  my $start_height = ( $Height - $words_height ) / 2;
-  draw_centered($image, $start_height, @lines);
+  my $start_height = ( $self->height() - $words_height ) / 2;
+  $self->draw_centered($image, $start_height, @lines);
 
 }
 
@@ -207,6 +205,7 @@ sub wrap_words {
 }
 
 sub draw_centered {
+  my $self = shift;
   my ($image, $starty, @lines) = @_;
 
   my $y = $starty;
@@ -221,5 +220,7 @@ sub draw_centered {
 
   return $y;
 }
+
+no Moo;
 
 1;

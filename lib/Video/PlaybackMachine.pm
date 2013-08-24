@@ -1,22 +1,20 @@
 package Video::PlaybackMachine;
 
-use 5.008;
+use 5.10.0;
 use strict;
 use warnings;
 
-our $VERSION = '0.07';
+our $VERSION = '0.09'; # VERSION
 
 use POE;
 use POE::Kernel;
 
 use Video::PlaybackMachine::Config;
 use Video::PlaybackMachine::ScheduleTable::DB;
-use Video::PlaybackMachine::DatabaseWatcher;
 use Video::PlaybackMachine::FillSegment;
 use Video::PlaybackMachine::Filler;
 use Video::PlaybackMachine::Scheduler;
 use Video::PlaybackMachine::FillProducer::SlideShow;
-use Video::PlaybackMachine::FillProducer::FillShort;
 use Video::PlaybackMachine::FillProducer::StillFrame;
 use Video::PlaybackMachine::FillProducer::UpNext;
 use Video::PlaybackMachine::FillProducer::NextSchedule;
@@ -27,7 +25,7 @@ Video::PlaybackMachine::Config->init_logging();
 
 sub run {
     my $type = shift;
-    my ($start_time) = @_;
+    my ($start_time, $start_at_beginning) = @_;
 
     defined $start_time or $start_time = time();
 
@@ -37,23 +35,21 @@ sub run {
       Video::PlaybackMachine::ScheduleTable::DB->new(
        schedule_name => $schedule_name );
 
-    my $watcher = Video::PlaybackMachine::DatabaseWatcher->new(
-        dbh     => $table->getDbh(),
-        table   => 'content_schedule',
-        session => 'Scheduler',
-        event   => 'update',
-    );
-
-    my $offset = $type->get_offset($start_time, $table);
-
-    my $watcher_session = $watcher->spawn();
+    my $offset;
+    
+    if ($start_at_beginning) {
+    		my $first = $table->get_first_entry();
+    		$offset = $first->start_time() - ( time() + 10 );
+    }
+    else {
+    	$offset = $type->get_offset($start_time, $table);
+    }
 
     my $scheduler = Video::PlaybackMachine::Scheduler->new(
         skip_tolerance => $config->skip_tolerance(),
         schedule_table => $table,
         filler         => $config->get_fill($table),
-        offset         => $offset,
-        watcher        => $watcher_session
+        offset         => $offset
     );
 
     $scheduler->spawn();

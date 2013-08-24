@@ -20,7 +20,7 @@ MAIN: {
 								    time => 15
 								    );
   ok(! $frame->has_audio(), "Still frame doesn't have audio");
-  isa_ok( $frame->get_time_layout(), 'Video::PlaybackMachine::TimeLayout::FixedTimeLayout');
+  isa_ok( $frame->time_layout(), 'Video::PlaybackMachine::TimeLayout::FixedTimeLayout');
   #is($frame->get_next(1), 2);
 
   my $still = '';
@@ -36,7 +36,7 @@ MAIN: {
 					 },
 					}
 		      );
-  POE::Kernel->run();
+   POE::Kernel->run();
  TODO: {
     local $TODO = 'Need to fix test';
     is($still, '/dev/null');

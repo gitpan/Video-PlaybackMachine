@@ -26,10 +26,10 @@ MAIN: {
 							 producer => $producer,
 							 multiple => 1
 							);
-  is($segment->get_name(), 'Test Segment');
-  is($segment->get_sequence(), 2);
-  is($segment->get_priority(), 5);
-  is($segment->get_producer(), $producer);
+  is($segment->name(), 'Test Segment');
+  is($segment->sequence_order(), 2);
+  is($segment->priority_order(), 5);
+  is($segment->producer(), $producer);
   ok($segment->is_available(15));
   ok(! $segment->is_available(5));
 }

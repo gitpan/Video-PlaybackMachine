@@ -1,36 +1,29 @@
 package Video::PlaybackMachine::Player::EventWheel;
 
-# TODO: Make a subclass of EventWheel
+our $VERSION = '0.09'; # VERSION
 
-###
-###
+use Moo;
 
-use strict;
 use POE;
 use Video::Xine;
 use Video::PlaybackMachine::Player;
 use Video::Xine::Stream qw/:status_constants/;
 use Video::Xine::Event qw/:type_constants/;
 
-## How often to check to see if Xine has stopped, in seconds
-use constant XINE_CHECK_INTERVAL_SECS => 2;
+with 'Video::PlaybackMachine::Logger';
 
-sub new {
-  my $type = shift;
-  my ($stream, %handlers) = @_;
+has 'stream' => ( is => 'ro', required => 1 );
 
-  my $self = {
-	      type => $type,
-	      stream => $stream,
-	      handlers => { %handlers },
-	      queue => undef,
-	      logger => Log::Log4perl->get_logger('Video.PlaybackMachine.Player.EventWheel'),	     
-	     };
+has 'handlers' => ( is => 'rw', 'clear' => 1, 'default' => sub { {} } );
 
-  $self->{queue} = Video::Xine::Event::Queue->new($self->{'stream'})
-    or die "Couldn't create Xine::Event::Queue";
+has 'queue' => ( is => 'lazy' );
 
-  bless $self, $type;
+has 'check_interval_secs' => ( 'is' => 'ro', default => 2 );
+
+sub _build_queue {
+	my $self = shift;
+	
+	return Video::Xine::Event::Queue->new( $self->stream() );
 }
 
 sub spawn {
@@ -52,34 +45,59 @@ sub _start {
 sub clear_events {
 	my $self = shift;
 		
-	1 while $self->{queue}->get_event();	
+	1 while $self->queue()->get_event();	
+}
+
+sub has_handler_for {
+	my $self = shift;
+	my ($event) = @_;
+	
+	return exists $self->handlers()->{$event->get_type()};
+}
+
+sub handler {
+	my $self = shift;
+	my ($event) = @_;
+	
+	return $self->handlers()->{ $event->get_type() };
+}
+
+sub call_handler {
+	my $self = shift;
+	my ($event) = @_;
+	
+    $self->debug("Invoking handler for ", $event->get_type(), "\n");
+
+	my $handler = $self->handler($event)
+		or return;
+	
+	return $handler->($self->stream(), $event)
 }
 
 sub get_events {
   my ($self, $heap, $kernel) = @_[OBJECT, HEAP, KERNEL];
 
   # Translate all events into callbacks
-  while ( my $event = $self->{queue}->get_event() ) {
-    $self->{'logger'}->debug("Received event: ", $event->get_type(), "\n");
+  while ( my $event = $self->queue()->get_event() ) {
+    $self->debug("Received Xine event: ", $event->get_type(), "\n");
     if ( $event->get_type() == XINE_EVENT_UI_PLAYBACK_FINISHED ) {
-      $self->{'stream'}->close();
+      $self->stream()->close();
     }
-    if ( exists $self->{'handlers'}{$event->get_type()} ) {
-      $self->{'logger'}->debug("Invoking handler for ", $event->get_type(), "\n");
-      $self->{'handlers'}{$event->get_type()}->($self->{'stream'}, $event);
+    if ( $self->has_handler_for($event) ) {
+      $self->call_handler($event);
     }
   }
 
   # Keep checking so long as we're playing
-  if ( $self->{'stream'}->get_status() == XINE_STATUS_PLAY ) {
-    $kernel->delay('get_events', XINE_CHECK_INTERVAL_SECS);
+  if ( $self->stream()->get_status() == XINE_STATUS_PLAY ) {
+    $kernel->delay('get_events', $self->check_interval_secs() );
   }
 }
 
 sub set_handler {
   my $self = shift;
-  my ($event, $callback) = @_;
-  $self->{'handlers'}{$event} = sub { $callback->($_[0], Video::PlaybackMachine::Player::PLAYBACK_OK() ) };
+  my ($event_type, $callback) = @_;
+  $self->handlers()->{$event_type} = sub { $callback->($_[0], Video::PlaybackMachine::Player::PLAYBACK_OK() ) };
 }
 
 
@@ -87,6 +105,8 @@ sub set_handler {
 sub set_stop_handler {
   $_[0]->set_handler(XINE_EVENT_UI_PLAYBACK_FINISHED, $_[1]);
 }
+
+no Moo;
 
 1;
 

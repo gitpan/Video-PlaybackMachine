@@ -1,5 +1,7 @@
 package Video::PlaybackMachine::TimeLayout::RangeLayout;
 
+our $VERSION = '0.09'; # VERSION
+
 ####
 #### Video::PlaybackMachine::TimeLayout::RangeLayout
 ####
@@ -15,9 +17,10 @@ package Video::PlaybackMachine::TimeLayout::RangeLayout;
 #### shortest short for the minimum and the time of the longest
 #### fitting short for the maximum.
 ####
+#### NOTE: Not currently in use. May be removed shortly.
+####
 
-use strict;
-use warnings;
+use Moo;
 
 use Carp;
 
@@ -25,26 +28,24 @@ use Carp;
 
 ############################# Class Methods ##########################
 
+has 'min_time' => ( is => 'ro' );
+
+has 'max_time' => ( is => 'ro' );
+
 ##
 ## new()
 ##
 ## Arguments:
-##   MIN_TIME: int -- minimum amount of time we can run
-##   MAX_TIME: int -- maximum amount of time we can run
+##   min_time: int -- minimum amount of time we can run
+##   max_time: int -- maximum amount of time we can run
 ##
-sub new {
+sub BUILDARGS {
   my $type = shift;
   my ($min_time, $max_time) = @_;
 
-  defined $min_time or croak($type, "::new() missing 'MIN_TIME' parameter");
-  defined $max_time or croak($type, "::new() missing 'MAX_TIME' parameter");
-
-  my $self = { min_time => $min_time,
+  return { min_time => $min_time,
 	       max_time => $max_time
 	     };
-
-  bless $self, $type;
-
 }
 
 
@@ -55,6 +56,7 @@ sub new {
 ##
 ## Returns the minimum amount of time the fill can take.
 ##
-sub min_time {
-  return $_[0]->{'min_time'};
-}
+
+no Moo;
+
+1;

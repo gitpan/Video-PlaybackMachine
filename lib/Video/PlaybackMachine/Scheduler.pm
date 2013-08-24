@@ -1,5 +1,7 @@
 package Video::PlaybackMachine::Scheduler;
 
+our $VERSION = '0.09'; # VERSION
+
 ####
 #### Video::PlaybackMachine::Scheduler
 ####
@@ -8,17 +10,14 @@ package Video::PlaybackMachine::Scheduler;
 #### Plays movies in the ScheduleTable at the appropriate times.
 ####
 
-use strict;
-use warnings;
+use Moo;
 
 use POE;
 use POE::Session;
 use Log::Log4perl;
-use Date::Manip;
 use POSIX 'INT_MAX';
 
 use Video::PlaybackMachine::Player qw(PLAYER_STATUS_PLAY);
-use Video::PlaybackMachine::ScheduleView;
 use Video::PlaybackMachine::Config;
 
 use Time::Duration;
@@ -32,7 +31,6 @@ use constant DEFAULT_SKIP_TOLERANCE => 30;
 use constant DEFAULT_IDLE_TOLERANCE => 15;
 
 our $Minimum_Fill = 7;
-
 
 ## Modes of operation
 
@@ -48,75 +46,56 @@ use constant FILL_MODE => 2;
 # Playing scheduled content
 use constant PLAY_MODE => 3;
 
+############################## Attributes ##############################
 
-############################## Class Methods ##############################
+has 'schedule_table' => ( 'is' => 'ro' );
 
+has 'player' => ( is => 'ro', builder => 1 );
 
-##
-## new()
-##
-## Arguments: (hash)
-##  schedule_table => Video::Playback::ScheduleTable
-##  offset => integer: seconds
-##  player => Video::PlaybackMachine::Player (optional)
-##  filler => Video::PlaybackMachine::Filler (optional)
-##  skip_tolerance => integer: seconds (optional)
-##  terminate_on_finish => boolean (default: true)
-##  run_forever => boolean (default: false)
-##
-sub new {
-  my $type = shift;
-  my %in = @_;
+has 'filler' => ( is => 'ro', required => 1 ) ;
 
-  defined $in{schedule_table} or croak "Argument 'schedule_table' required; stopped";
-  defined $in{skip_tolerance} or $in{skip_tolerance} = DEFAULT_SKIP_TOLERANCE;
-  defined $in{'terminate_on_finish'} or $in{'terminate_on_finish'} = 1;
-  defined $in{'run_forever'} or $in{'run_forever'} = 0;
+has 'terminate_on_finish' => ( is => 'ro', 'default' => 1 );
 
+has 'run_forever' => ( is => 'ro', 'default' => 0 );
 
-  my $self = {
-	      terminate_on_finish => $in{'terminate_on_finish'},
-	      run_forever => $in{'run_forever'},
-	      skip_tolerance => $in{skip_tolerance},
-	      schedule_table => $in{schedule_table},
-	      player => $in{player} || Video::PlaybackMachine::Player->new(),
-	      filler => $in{filler} || Video::PlaybackMachine::Filler->new(),
-	      waitlist => [],
-	      mode => START_MODE,
-	      offset => $in{offset},
-	      minimum_fill => $Minimum_Fill,
-	      schedule_view => Video::PlaybackMachine::ScheduleView->new($in{schedule_table}, $in{offset}),
-	      watcher_session => $in{watcher},
-	      logger => Log::Log4perl->get_logger('Video::Playback::Scheduler'),
-	     };
+has 'mode' => ( is => 'rw', default => START_MODE );
 
-  $self->{'logger'}->info("$0 started");
+has 'offset' => ( is => 'ro', default => 0 );
 
-  bless $self, $type;
-}
+has 'minimum_fill' => ( is => 'ro', default => 7 );
+
+has 'logger' => ( is => 'ro', default => 
+	sub {
+		Log::Log4perl->get_logger('Video::Playback::Scheduler');
+	}
+);
 
 ############################# Object Methods ##############################
 
-sub spawn {
-  my $self = shift;
-
-  POE::Session->create(
-
-		       object_states => [ 
-					 $self => [qw(_start time_tick finished update play_scheduled warning_scheduled schedule_next shutdown wait_for_scheduled query_next_scheduled)]
-					],
-		       );
+sub _build_player {
+	my $self = shift;
+	
+	return Video::PlaybackMachine::Player->new();
 }
 
-##
-## get_mode()
-##
-## Returns:
-##
-##   integer -- START_MODE, FILL_MODE, or PLAY_MODE.
-##
-sub get_mode {
-  return $_[0]->{'mode'};
+sub spawn {
+    my $self = shift;
+
+    POE::Session->create(
+
+        object_states => [
+            $self => [
+                qw(_start finished update play_scheduled warning_scheduled schedule_next shutdown wait_for_scheduled query_next_scheduled)
+            ]
+        ],
+    );
+}
+
+# The schedule time.
+sub time {
+    my $self = shift;
+    
+    return CORE::time() + $self->offset();
 }
 
 ##
@@ -129,104 +108,42 @@ sub get_mode {
 ## Returns the movie, if any, which should be playing right
 ## now.
 ##
-## Enforces our playback policies.
-##
-## If we're just starting up, and something is scheduled to be played
-## right now, we'll play it no matter how far along we're supposed to
-## be. That way we can restart in the middle of a movie and not miss the
-## whole thing.
-##
-## Otherwise, it returns a movie if there's one scheduled for right
-## now and playing it would not make us miss an unacceptably long part
-## of the movie.
-##
 sub should_be_playing {
-  my $self = shift;
-  my $schedule_now = $self->real_to_schedule(@_);
+    my $self = shift;
 
-  my $current = $self->{schedule_view}->get_schedule_table()->get_entry_during($schedule_now);
+    my $current =
+      scalar $self->schedule_table()->get_entry_during( $self->time() );
 
-  # If there's no entry to play right now, return nothing
-  defined($current) or return;
-
-   if ($self->get_mode() == START_MODE) {
-
-    # Return the movie listing
     return $current;
-
-  } # End if we're in startup mode
-
-  # Else we're not in startup mode
-  else {
-
-    # Return the movie if it's not too far along
-    if ($self->get_seek($current) < $self->{skip_tolerance} ) {
-      return $current;
-    }
-    # TODO make sure that there's no edge condition
-    else {
-      return;
-    }
-
-  } # End else not in startup mode
-
 }
-
-sub get_seek {
-  my $self = shift;
-  return $self->{schedule_view}->get_seek(@_);
-}
-
 
 sub get_next_entry {
-  my $self = shift;
-  return $self->{schedule_view}->get_next_entry(@_);
+    my $self = shift;
+
+    return
+      scalar $self->schedule_table()->get_entries_after( $self->time(), 1 );
+
 }
 
 sub get_time_to_next {
-  my $self = shift;
-  my $schedule_to_next = $self->{schedule_view}->get_time_to_next(@_);
-  if ( (! defined($schedule_to_next) ) && $self->{'run_forever'} ) {
-    return INT_MAX;
-  }
-  else {
-    return $schedule_to_next;
-  }
-}
+    my $self = shift;
+    
+    my $next = $self->get_next_entry();
 
-sub schedule_to_real {
-  my $self = shift;
-  return $self->{'schedule_view'}->schedule_to_real(@_);
-}
-
-sub real_to_schedule {
-  my $self = shift;
-  return $self->{'schedule_view'}->real_to_schedule(@_);
-}
-
-
-##
-## Returns the amount of time required to skip to play
-## the given movie before the next scheduled entry.
-##
-sub time_skip {
-  my $self = shift;
-  my $movie = shift;
-  my $time = $self->real_to_schedule(@_);
-
-  my $diff = $self->get_time_to_next(@_);
-
-  if ($movie->get_length() > $diff) {
-    return $movie->get_length() - $diff;
-  }
-  else {
-    return 0;
-  }
-
+	# TODO The 'run_forever' business should probably be in the 
+	# calling function, not down here
+	if ( defined($next) ) {
+        return $next->start_time() - $self->time();	
+	}
+	elsif ( $self->run_forever() ) {
+        return INT_MAX;	
+	}
+    else {
+    	return;
+    }
 }
 
 ############################# Session Methods #############################
-
 
 ##
 ## _start()
@@ -239,33 +156,20 @@ sub time_skip {
 ## that should be played.
 ##
 sub _start {
-  my ($self, $kernel, $heap) = @_[OBJECT, KERNEL, HEAP];
+    my ( $self, $kernel, $heap ) = @_[ OBJECT, KERNEL, HEAP ];
 
-  # Hang out a shingle
-  $kernel->alias_set('Scheduler');
+    # Hang out a shingle
+    $kernel->alias_set('Scheduler');
 
-  # Set up our Player and our Filler
-  $heap->{player_session} = $self->{player}->spawn();
-  $heap->{filler_session} = $self->{filler}->spawn();
+    # Set up our Player and our Filler
+    $heap->{player_session} = $self->player->spawn();
+    $heap->{filler_session} = $self->filler->spawn();
+    
+    $self->logger->info('Scheduler started');
 
-  # Start the time ticker
-  $kernel->delay('time_tick', Video::PlaybackMachine::Config->config()->time_tick() );
+    # Check the database for things that need playing
+    $kernel->yield('update');
 
-  # Check the database for things that need playing
-  $kernel->yield('update');
-
-}
-
-##
-## time_tick()
-##
-## Updates the process table entry with the current time (according to the schedule)
-##
-sub time_tick
-{
-	my $time = $_[OBJECT]->real_to_schedule(time());
-	$0 = "playback_machine: " . scalar localtime($time) . "($time)";
-	$_[KERNEL]->delay('time_tick', Video::PlaybackMachine::Config->config()->time_tick());
 }
 
 ##
@@ -276,7 +180,13 @@ sub time_tick
 ## with the call() command.
 ##
 sub query_next_scheduled {
-  return $_[OBJECT]->get_next_entry(undef,$_[ARG0]);
+	my ($self, $num) = @_;
+	
+	$num //= 1;
+
+    return
+      $self->schedule_table()->get_entries_after( $self->time(), $num );
+
 }
 
 ##
@@ -290,37 +200,36 @@ sub query_next_scheduled {
 ## a running movie.
 ##
 sub update {
-  my ($self, $kernel, $heap) = @_[OBJECT, KERNEL, HEAP];
+    my ( $self, $kernel, $heap ) = @_[ OBJECT, KERNEL, HEAP ];
 
-  # Clear all schedule alarms
-  $kernel->alarm_set('play_scheduled');
-  $kernel->alarm_set('warning_scheduled');
+    # Clear all schedule alarms
+    $kernel->alarm('play_scheduled');
+    $kernel->alarm('warning_scheduled');
 
-  # If we're not playing
-  if ($self->get_mode() != PLAY_MODE) {
+    # If we're not playing
+    if ( $self->mode() != PLAY_MODE ) {
 
-    # If there's something supposed to be playing
-    if ( my $entry = $self->should_be_playing() ) {
+        # If there's something supposed to be playing
+        if ( my $entry = $self->should_be_playing() ) {
 
-      $self->{'logger'}->debug("Time to play $entry");
+            $self->logger->debug("Time to play $entry");
 
-      # Play it
-      $kernel->yield('play_scheduled', $entry->get_listing(), $self->get_seek($entry));
-      return;
+            # Play it
+            $kernel->yield( 'play_scheduled', $entry, $self->get_seek($entry) );
+            return;
 
-    } # End if supposed to be playing
+        }    # End if supposed to be playing
 
-    # Otherwise, fill gap until next scheduled item
-    else {
-      $kernel->yield('wait_for_scheduled');
-    }
+        # Otherwise, fill gap until next scheduled item
+        else {
+            $kernel->yield('wait_for_scheduled');
+        }
 
-  } # End if we're not playing
+    }    # End if we're not playing
 
-  # Set alarm to play next scheduled item
-  $kernel->delay('schedule_next', 5);
+    # Set alarm to play next scheduled item
+    $kernel->delay( 'schedule_next', 5 );
 }
-
 
 ##
 ## finished()
@@ -334,222 +243,203 @@ sub update {
 ## Until we enter fill or play mode, this method puts us into idle mode.
 ##
 sub finished {
-  my ($self, $kernel, $request, $response) = @_[OBJECT, KERNEL, ARG0, ARG1];
+    my ( $self, $kernel, $request, $response ) =
+      @_[ OBJECT, KERNEL, ARG0, ARG1 ];
+      
+    my $now = CORE::time();
 
-  my $now = time();
-
-  # If we've been running longer than the restart interval, restart the system
-  my $config = Video::PlaybackMachine::Config->config();
-  if ($config->restart_interval() > 0) {
-  	if ( ($now - $^T) > $config->restart_interval() ) {
-    		$self->{'logger'}->info("Shutting down for restart");
-    		exit(0);
-  	}
-  }
-
-  # We're in idle mode now
-  $self->{mode} = IDLE_MODE;
-
-  # Log the item that finished playing
-  $kernel->post('Logger', 'log_played_movie', $request->[0], $request->[1], time(), $response->[0]);
-
-  # If there's something waiting to be played
-  my $waiting_movie;
-  if ( $waiting_movie = shift @{ $self->{waitlist} } ) {
-
-    # If there's time enough to play it
-    if ( $self->time_skip( $waiting_movie, $now ) <= $self->{skip_tolerance} ) {
-
-      # Play it, skipping as necessary
-      $kernel->yield('play_scheduled', $waiting_movie, $self->time_skip( $waiting_movie ) );
-
-    } # End if time enough
-
-    # Otherwise we didn't have time to play it
-    else {
-
-      # Log that we had to skip something
-      $kernel->post('Logger', 'log_skipped_movie', $waiting_movie);
-
-      # Schedule the next movie
-      $kernel->yield('schedule_next');
-
-      # Wait for the next movie
-      $kernel->yield('wait_for_scheduled');
-
-    } # End no time
-
-  }# End if something waiting
-
-  # Otherwise, nothing scheduled to play right now
-  else {
-
-    # If there's something else scheduled
-    if ( defined $self->get_next_entry($now) ) {
-
-      # If there's enough time to start filling
-      if ( $self->get_time_to_next($now) > $self->{minimum_fill} ) {
-
-	# Fill until next scheduled entry
-	$kernel->yield('wait_for_scheduled');
-
-      } # End if enough time
-
-      # Otherwise, go into idle mode till next
-      else {
-
-	$self->{'logger'}->debug("Not filling: " . $self->get_time_to_next($now) . " too short for fill (minimum $self->{'minimum_fill'})\n");
-
-	$self->{mode} = IDLE_MODE;
-
-      }
-
-    } # End if something else scheduled
-
-    # Otherwise, nothing scheduled; shut down.
-    else {
-
-      $kernel->yield('shutdown');
-
+    # If we've been running longer than the restart interval, restart the system
+    my $config = Video::PlaybackMachine::Config->config();
+    if ( $config->restart_interval() > 0 ) {
+        if ( ( $now - $^T ) > $config->restart_interval() ) {
+            $self->{'logger'}->info("Shutting down for restart");
+            exit(0);
+        }
     }
 
-  } # End nothing right now
+    # We're in idle mode now
+    $self->{mode} = IDLE_MODE;
+
+    # Log the item that finished playing
+    $self->logger()->info("Movie played: ", $response->[0]);
+
+	# If there's something else scheduled
+	if ( defined $self->get_next_entry($now) ) {
+
+		# If there's enough time to start filling
+		if ( $self->get_time_to_next($now) > $self->{minimum_fill} ) {
+
+			# Fill until next scheduled entry
+			$kernel->yield('wait_for_scheduled');
+
+		}    # End if enough time
+
+		# Otherwise, go into idle mode till next
+		else {
+
+			$self->logger()->debug( "Not filling: "
+				  . $self->get_time_to_next($now)
+				  . " too short for fill (minimum $self->{'minimum_fill'})\n"
+			);
+
+			$self->mode(IDLE_MODE);
+
+		}
+
+	}    # End if something else scheduled
+
+	# Otherwise, nothing scheduled; shut down.
+	else {
+
+		$kernel->yield('shutdown');
+
+	}
+
 
 }
 
 sub warning_scheduled {
-  my ($self, $kernel) = @_[OBJECT, KERNEL];
+    my ( $self, $kernel ) = @_[ OBJECT, KERNEL ];
 
-  # If we're in fill mode
-  if ( $self->get_mode() == FILL_MODE ) {
+    # If we're in fill mode
+    if ( $self->mode() == FILL_MODE ) {
 
-    # Send a warning message to the Filler
-    $kernel->post('Filler', 'warning', $self->get_time_to_next());
+        # Send a warning message to the Filler
+        $kernel->post( 'Filler', 'warning', $self->get_time_to_next() );
 
-  } # End if we're in fill mode
+    }    # End if we're in fill mode
 
-  # Otherwise, do nothing; we do not interrupt scheduled content.
+    # Otherwise, do nothing; we do not interrupt scheduled content.
 
 }
 
 sub play_scheduled {
-  my ($self, $kernel, $movie, $seek) = @_[OBJECT, KERNEL, ARG0, ARG1];
+    my ( $self, $kernel, $session, $entry, $seek ) = @_[ OBJECT, KERNEL, SESSION, ARG0, ARG1 ];
 
-  # If we're playing something scheduled
-  if ( ( $self->get_mode() == PLAY_MODE ) && ($self->{player}->get_status() == PLAYER_STATUS_PLAY) ) {
+    # If we're playing something scheduled
+    if (   ( $self->mode() == PLAY_MODE )
+        && ( $self->player()->get_status() == PLAYER_STATUS_PLAY ) )
+    {
+		$self->logger()->warn("Skipped playing " . $entry->mrl() . " since already playing");
+		
+        return;
 
-    # Add the currently-scheduled item to the waiting list
-    # This discards any existing $seek
-    push(@{ $self->{waitlist} }, $movie);
+    }    # End if we're playing something scheduled
 
-    return;
+    # Otherwise, we're ready to play
+    else {
 
-  } # End if we're playing something scheduled
+        # Tell the Filler to stop filling
+        $kernel->post( 'Filler', 'stop' );
 
-  # Otherwise, we're ready to play
-  else {
+        # Mark that we're in play mode now
+        $self->mode(PLAY_MODE);
 
-    # Tell the Filler to stop filling
-    $kernel->post('Filler', 'stop');
+        # Start playing the movie
+        $kernel->post( 'Player', 'play',
+            $session->postback( 'finished', $self, CORE::time() ),
+            0, $entry->mrl );
 
-    # Mark that we're in play mode now
-    $self->{'mode'} = PLAY_MODE;
+        # Schedule the next item from the schedule table
+        $kernel->delay( 'schedule_next', 3 );
 
-    # Start playing the movie
-    $movie->play($seek);
-
-    # Schedule the next item from the schedule table
-    $kernel->delay('schedule_next', 3);
-
-  } # End otherwise
-
+    }    # End otherwise
 
 }
 
 sub wait_for_scheduled {
-  my ($self, $kernel) = @_[OBJECT, KERNEL];
+    my ( $self, $kernel ) = @_[ OBJECT, KERNEL ];
 
-  defined $self->get_time_to_next()
-    or $self->{'logger'}->logdie("Called wait_for_scheduled with nothing to wait for; schedule time is " . scalar localtime($self->real_to_schedule()) );
+    defined $self->get_time_to_next()
+      or $self->{'logger'}->logdie(
+        "Called wait_for_scheduled with nothing to wait for; schedule time is "
+          . scalar localtime( $self->time() ) );
 
-  # If there's enough time before the next item to bother with fill
-  if ( $self->get_time_to_next() > $self->{minimum_fill} ) {
+    # If there's enough time before the next item to bother with fill
+    if ( $self->get_time_to_next() > $self->{minimum_fill} ) {
 
-    # Mark that we're in Fill mode
-    $self->{mode} = FILL_MODE;
+        # Mark that we're in Fill mode
+        $self->mode( FILL_MODE );
 
-    # Tell our Filler to get to work
-    $kernel->post('Filler', 'start_fill', $self->{schedule_view});
+        # Tell our Filler to get to work
+        $kernel->post( 'Filler', 'start_fill', $self );
 
-  } # End if enough time
+    }    # End if enough time
 
-  # Else not enough time
-  else {
+    # Else not enough time
+    else {
 
-    # Go to Idle mode
-    $self->{mode} = IDLE_MODE;
+        # Go to Idle mode
+        $self->mode( IDLE_MODE );
 
-  }
+    }
 
 }
 
 sub schedule_next {
-  my ($self, $kernel, $heap) = @_[OBJECT, KERNEL, HEAP];
+    my ( $self, $kernel, $heap ) = @_[ OBJECT, KERNEL, HEAP ];
 
-  # If there's something left in the schedule
-  if ( my $entry = $self->get_next_entry() ) {
+    # If there's something left in the schedule
+    if ( my $entry = $self->get_next_entry() ) {
 
-     # Set an alarm to play it
-    my $alarm_offset = $self->{'schedule_view'}->schedule_to_real($entry->get_start_time());
-    my $in_time = $alarm_offset - time();
+        # Set an alarm to play it
+        my $alarm_offset = $entry->start_time() - $self->offset();
+        my $in_time = $alarm_offset - CORE::time();
 
-    ($in_time >= 0) 
-      or $self->{'logger'}->logdie("Attempt to schedule '", $entry->get_title(), "' in the past ($in_time) at ", scalar  localtime $alarm_offset);
+        ( $in_time >= 0 )
+          or $self->logger()->logdie(
+            "Attempt to schedule '",
+            $entry->mrl(),
+            "' in the past ($in_time) at ",
+            scalar localtime $alarm_offset
+          );
 
-    $self->{'logger'}->info("scheduling: ", $entry->get_title(), " at ", scalar localtime($alarm_offset), " in ", duration($in_time));
-    $kernel->alarm( 'play_scheduled', $alarm_offset, $entry->get_listing(), 0 );
+        $self->logger()->info( "scheduling: ", $entry->mrl(), " at ",
+            scalar localtime($alarm_offset),
+            " in ", duration($in_time) );
+        $kernel->alarm( 'play_scheduled', $alarm_offset, $entry,
+            0 );
 
-  } # End if there's something left
+    }    # End if there's something left
 
 }
 
 sub shutdown {
-  my ($self, $kernel, $heap) = @_[OBJECT, KERNEL, HEAP];
+    my ( $self, $kernel, $heap ) = @_[ OBJECT, KERNEL, HEAP ];
 
-  # If we're supposed to quit
-  if ($self->{terminate_on_finish}) {
+    # If we're supposed to quit
+    if ( $self->terminate_on_finish() ) {
 
-    # Pull in the shingle
-    $kernel->alias_remove('Scheduler');
+        # Pull in the shingle
+        $kernel->alias_remove('Scheduler');
 
-    # Terminate Watcher if defined
-    $kernel->post($self->{'watcher_session'}, 'shutdown');
+        # Terminate Player and Filler
+        $kernel->post( $heap->{player_session}, 'shutdown' );
+        $kernel->post( $heap->{filler_session}, 'shutdown' );
 
-    # Terminate Player and Filler
-    $kernel->post($heap->{player_session}, 'shutdown');
-    $kernel->post($heap->{filler_session}, 'shutdown');
+        # Stop watching for 'finished' events
+        $kernel->state('finished');
 
-    # Stop watching for 'finished' events
-    $kernel->state('finished');
+        delete $heap->{$_} foreach keys %$heap;
 
-    delete $heap->{$_} foreach keys %$heap;
+        $kernel->alarm_remove_all();
 
-    $kernel->alarm_remove_all();
+        return;
 
-    return;
+    }    # End if we're supposed to quit
 
+    # Otherwise we're supposed to put up a standby screen
+    else {
 
-  } # End if we're supposed to quit
+        # Put up the standby screen
+        warn "Putting up standby screen unimplemented...";
 
-  # Otherwise we're supposed to put up a standby screen
-  else {
-
-    # Put up the standby screen
-    warn "Putting up standby screen unimplemented...";
-
-  } # End otherwise
+    }    # End otherwise
 
 }
 
-
 1;
+
+=head1 NAME
+
+Video::PlaybackMachine::Scheduler - Plays movies at the appropriate times

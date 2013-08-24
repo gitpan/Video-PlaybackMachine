@@ -1,5 +1,7 @@
 package Video::PlaybackMachine::TimeLayout::GranularTimeLayout;
 
+our $VERSION = '0.09'; # VERSION
+
 ####
 #### Video::PlaybackMachine::TimeLayout::GranularTimeLayout
 ####
@@ -10,12 +12,14 @@ package Video::PlaybackMachine::TimeLayout::GranularTimeLayout;
 #### etc. seconds, but can't fill 12.
 ####
 
-use strict;
-use warnings;
-use diagnostics;
+use Moo;
 
 use Carp;
 use POSIX 'floor';
+
+has 'time' => ( is => 'ro', required => 1 );
+
+has 'max_iterations' => ( is => 'ro' );
 
 ############################# Class Constants #############################
 
@@ -27,16 +31,14 @@ use POSIX 'floor';
 ## Arguments:
 ##   TIME: int -- Time per repeating event
 ##
-sub new {
+sub BUILDARGS {
   my $type = shift;
   my ($time, $max_iterations) = @_;
-  defined $time or croak($type, "::new() called incorrectly");
 
-  my $self = { 
+  return { 
       time => $time,
       max_iterations => $max_iterations
-	   };
-  bless $self, $type;
+  };
   
 }
 
@@ -49,8 +51,10 @@ sub new {
 ## Returns the minimum amount of time the fill can take. In this case,
 ## returns the grain.
 ##
-sub min_time { 
-  return $_[0]->{time};
+sub min_time {
+  my $self = shift;
+  
+  return $self->time();
 }
 
 ##
@@ -67,23 +71,25 @@ sub preferred_time {
   my $self = shift;
   my ($time_left) = @_;
 
-  my $req_events  = floor($time_left / $self->{'time'});
+  my $req_events  = floor( $time_left / $self->time() );
 
-  return $self->get_num_events($req_events) * $self->{time};
+  return $self->get_num_events($req_events) * $self->time();
 }
 
 sub get_num_events {
   my $self = shift;
   my ($events) = @_;
 
-  if (defined $self->{'max_iterations'} &&
-      $events > $self->{'max_iterations'}) {
-    return $self->{'max_iterations'};
+  if (defined $self->max_iterations() &&
+      $events > $self->max_iterations) {
+    return $self->max_iterations();
   }
   else {
     return $events;
   }
 
 }
+
+no Moo;
 
 1;

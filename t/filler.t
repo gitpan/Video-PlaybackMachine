@@ -17,7 +17,9 @@ use Test::MockObject;
 
 use Video::PlaybackMachine::MockScheduleTable;
 use Video::PlaybackMachine::FillSegment;
-use Video::PlaybackMachine::ScheduleView;
+use Video::PlaybackMachine::Schema;
+use Video::PlaybackMachine::ScheduleTable::DB;
+use Video::PlaybackMachine::Scheduler;
 use Video::PlaybackMachine::TimeLayout::FixedTimeLayout;
 use POE;
 use POE::Session;
@@ -47,24 +49,26 @@ MAIN: {
   my $filler = Video::PlaybackMachine::Filler->new( segments => [ $two_seg, $seven_seg] );
   $filler->spawn();
 
-  my $view = make_view($now);
+  # A little wonky. We're making a scheduler to pass around, but we're not spawning
+  # it.
+  my $scheduler = make_scheduler($filler);
 
   # Spin up a mock session to check on play_still calls
   # Here it's playing both Player and Scheduler
   POE::Session->create(
 		       inline_states => {
 					 _start => sub {
-					   $two_seg->get_producer()->clear();
-					   $seven_seg->get_producer()->clear();
+					   $two_seg->producer()->clear();
+					   $seven_seg->producer()->clear();
 
 					   $_[KERNEL]->alias_set('Player');
 					   $_[KERNEL]->alias_set('Scheduler');
-					   $_[KERNEL]->post('Filler', 'start_fill', $view);
+					   $_[KERNEL]->post('Filler', 'start_fill', $scheduler);
 					   $_[KERNEL]->delay('check', 1);
 					 },
 					 check => sub {
-					   ok( $two_seg->get_producer()->called('start'), 'Two start' );
-					   ok( ! $seven_seg->get_producer()->called('start'), 'Seven start' );
+					   ok( $two_seg->producer()->called('start'), 'Two start' );
+					   ok( ! $seven_seg->producer()->called('start'), 'Seven start' );
 					   $_[KERNEL]->post('Filler', 'still_ready', 'test', 2);
 					 },
 					 play_still => sub {
@@ -90,13 +94,17 @@ sub ok_time {
 
 }
 
-sub make_view {
-  my ($now) = @_;
-  # Create a ScheduleView with some programming starting in 5 seconds
-  my $sched_table = Video::PlaybackMachine::MockScheduleTable->new($now);
-  $sched_table->add(5, 5, 1);
-  my $sched_view = Video::PlaybackMachine::ScheduleView->new($sched_table, 0);
-  return $sched_view;
+sub make_scheduler {
+  my ($filler) = @_;
+  
+  # Create a Scheduler with some programming starting in 5 seconds
+  my $sched_table = make_temp_schedule();
+  add_entry($sched_table, 5, 1);
+  my $scheduler = Video::PlaybackMachine::Scheduler->new(
+  	filler => $filler,
+  	schedule_table => $sched_table
+  );
+  return $scheduler;
 }
 
 sub make_segment {
@@ -106,7 +114,7 @@ sub make_segment {
   $producer->set_true('start');
   $producer->set_true('is_available');
   $producer->mock('get_next', sub { $_[0] + 1 });
-  $producer->set_always('get_time_layout',
+  $producer->set_always('time_layout',
 			Video::PlaybackMachine::TimeLayout::FixedTimeLayout->new($seconds));
   return Video::PlaybackMachine::FillSegment->new(
 						  name => "$seconds seconds",
@@ -115,4 +123,42 @@ sub make_segment {
 						  producer => $producer
 						  );
 
+}
+
+sub make_temp_schedule {
+	my $schema = Video::PlaybackMachine::Schema->connect(
+		'dbi:SQLite:dbname=:memory:', '', ''
+	);
+	$schema->deploy( { 'add_drop_table' => 0 } );
+	
+	$schema->resultset('Schedule')->create({
+		'name' => 'test'
+	});
+	
+	my $schedule_table = Video::PlaybackMachine::ScheduleTable::DB->new(
+		'schema' => $schema,
+		'schedule_name' => 'test'
+	);
+}
+
+sub add_entry {
+	my ($schedule_table, $start, $duration) = @_;
+	
+	my $schema = $schedule_table->schema();
+	
+	my $mrl = '/dev/null/fake' . $duration;
+	
+	my $schedule = $schema->resultset('Schedule')->find({name => 'test'});
+	
+	my $movie_info = $schema->resultset('MovieInfo')->find_or_create({ 'mrl' => $mrl, duration => $duration });
+	my $entry = $schema->resultset('ScheduleEntry')->create({ 
+		'mrl' => $mrl, 
+		'start_time' => time() + $start,
+		'schedule_id' => $schedule->schedule_id
+	});
+	my $end = $schema->resultset('ScheduleEntryEnd')->create({ 
+		'schedule_entry_id' => $entry->schedule_entry_id(),
+		'stop_time' => $entry->start_time() + $movie_info->duration()
+ 	});
+	return $entry;
 }

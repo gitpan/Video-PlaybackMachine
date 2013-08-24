@@ -1,5 +1,7 @@
 package Video::PlaybackMachine::Filler;
 
+our $VERSION = '0.09'; # VERSION
+
 ####
 #### Video::PlaybackMachine::Filler
 ####
@@ -8,47 +10,26 @@ package Video::PlaybackMachine::Filler;
 #### POE session for the Filler.
 ####
 
-use strict;
-use warnings;
+use Moo;
+
 use Carp;
 
 use POE;
 use POE::Session;
 
 use Time::Duration;
-use Log::Log4perl;
 
 use Video::PlaybackMachine::TimeManager;
 
-############################# Class Constants #############################
+with 'Video::PlaybackMachine::Logger';
 
-############################## Class Methods ##############################
+############################# Parameters #############################
 
-##
-## new()
-##
-## Arguments: hash
-##   segments => arrayref of FillSegment
-##
-sub new {
-  my $type = shift;
-  my (%in) = @_;
+has 'segments' => ( is => 'ro', default => sub { [] } );
 
-  (ref $in{segments} eq 'ARRAY')
-    or croak($type, "::new() called improperly");
+has 'time_manager' => ( is => 'rw' );
 
-  foreach my $segment (@{ $in{segments} }) {
-    ref $segment eq 'Video::PlaybackMachine::FillSegment'
-      or croak($type, "::new: option 'segments' contains '$segment')");
-  }
-
-  my $self = {
-	      segments => $in{segments},
-	      logger => Log::Log4perl->get_logger('Video::PlaybackMachine::Filler')
-	     };
-
-  bless $self, $type;
-}
+has 'scheduler' => ( is => 'rw' );
 
 ############################# Object Methods ##############################
 
@@ -79,18 +60,19 @@ sub spawn {
 ## Called to start the Filler filling.
 ##
 sub start_fill {
+	my ($self, $heap, $kernel, $scheduler) = @_[OBJECT, HEAP, KERNEL, ARG0];
+
 
   # Initialize a TimeManager with our FillSegments
-  $_[HEAP]{time_manager} = Video::PlaybackMachine::TimeManager->new( @{ $_[OBJECT]{segments} } );
+  $self->reset_time_manager();
 
-  # Store the current schedule in the heap
-  $_[HEAP]{view} = $_[ARG0]
-        or $_[OBJECT]->{'logger'}->logconfess('ARG0 required');
+  # Store the current schedule
+  $self->scheduler($scheduler);
 
-  $_[OBJECT]->{'logger'}->debug("Filling, ttn=", duration($_[ARG0]->get_time_to_next()),"\n");
+  $self->debug("Filling, ttn=", duration($_[ARG0]->get_time_to_next()),"\n");
 
   # View the first segment
-  $_[KERNEL]->yield('next_fill');
+  $kernel->yield('next_fill');
 
 }
 
@@ -101,6 +83,17 @@ sub stop {
   }
 }
 
+sub reset_time_manager {
+	my ($self) = @_;
+	
+	$self->time_manager( 
+		Video::PlaybackMachine::TimeManager
+  			->new( @{ $self->segments } ) 
+  		);
+  	
+  	return;
+}
+
 ##
 ## fill_done()
 ##
@@ -109,9 +102,7 @@ sub stop {
 ## that we're idle.
 ##
 sub fill_done {
-  $_[KERNEL]->alarm_set('next_fill');
-  delete $_[HEAP]->{time_manager};
-  delete $_[HEAP]->{view};
+  $_[KERNEL]->alarm('next_fill');
   $_[KERNEL]->post('Scheduler', 'wait_for_scheduled');
 }
 
@@ -122,21 +113,29 @@ sub fill_done {
 ## played, we're done.
 ##
 sub next_fill {
+	my ($self, $heap, $kernel) = @_[OBJECT, HEAP, KERNEL];
+	
+  $self->scheduler() 
+    or $self->logconfess("Somehow called next_fill on us without calling start_fill");
+    
+  my $time_to_next = $self->scheduler()->get_time_to_next();
+  
+  if (! defined $time_to_next ) {
+  	$kernel->yield('fill_done');
+  	return;
+  }
+  
+  $self->debug("Time to next: $time_to_next");
 
-  $_[HEAP]{view} 
-    or $_[OBJECT]{'logger'}->logconfess("Somehow called next_fill on us without calling start_fill");
-
-  my ($segment, $time) = $_[HEAP]{time_manager}->get_segment(
-							     $_[HEAP]{view}->get_time_to_next(time())
-							    )
+  my ($segment, $time) = $self->time_manager()->get_segment( $time_to_next  )
     or do {
-      $_[KERNEL]->yield('fill_done');
+      $kernel->yield('fill_done');
       return;
     };
 
-  $_[OBJECT]{'logger'}->debug("Starting fill segment name: ", $segment->get_name());
+  $self->debug("Starting fill segment name: ", $segment->name());
 
-  $segment->get_producer()->start($time);
+  $segment->producer()->start($time);
 
 }
 
@@ -154,6 +153,8 @@ sub short_ready {
 		   @_[ARG0 .. $#_]);
 
 }
+
+no Moo;
 
 
 1;

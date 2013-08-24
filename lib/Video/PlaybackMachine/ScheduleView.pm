@@ -1,5 +1,7 @@
 package Video::PlaybackMachine::ScheduleView;
 
+our $VERSION = '0.09'; # VERSION
+
 ####
 #### Video::PlaybackMachine::ScheduleView
 ####

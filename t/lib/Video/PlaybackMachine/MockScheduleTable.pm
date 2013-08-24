@@ -14,9 +14,6 @@ package Video::PlaybackMachine::MockScheduleTable;
 use strict;
 use warnings;
 
-use Video::PlaybackMachine::AVFile;
-use Video::PlaybackMachine::ScheduleEntry;
-
 use base 'Exporter';
 
 our @EXPORT_OK = qw(mock_schedule_table);

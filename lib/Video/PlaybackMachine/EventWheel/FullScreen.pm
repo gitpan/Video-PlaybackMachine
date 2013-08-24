@@ -1,21 +1,15 @@
 package Video::PlaybackMachine::EventWheel::FullScreen;
 
-use strict;
-use warnings;
+our $VERSION = '0.09'; # VERSION
+
+use Moo;
 
 use X11::FullScreen;
 
-use base 'Video::PlaybackMachine::EventWheel';
+with 'Video::PlaybackMachine::EventWheel';
 
 ######################### Class Methods #########################
 
-sub new {
-  my $type = shift;
-  my ($source, $window, %handlers) = @_;
-  my $self = $type->SUPER::new($source, %handlers);
-  $self->{'window'} = $window;
-  return $self;
-}
 
 ######################### Object Methods ########################
 
@@ -23,16 +17,19 @@ sub get_event {
   my $self = shift;
   my ($heap) = @_;
 
-  return $self->{'source'}->checkWindowEvent($self->{'window'});
+  return $self->source()->check_event();
 }
 
 
 # Expose is 12
 sub set_expose_handler {
-  $_[0]->set_handler(12, $_[1]);
+	my ($self, $handler) = @_;
+
+  $self->set_handler(12, $handler);
 }
 
 # TODO: Make is_running check the display handle
 
+no Moo;
 
 1;

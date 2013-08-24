@@ -1,5 +1,7 @@
 package Video::PlaybackMachine::TimeLayout::FixedTimeLayout;
 
+our $VERSION = '0.09'; # VERSION
+
 ####
 #### Video::PlaybackMachine::TimeLayout::FixedTimeLayout
 ####
@@ -9,29 +11,20 @@ package Video::PlaybackMachine::TimeLayout::FixedTimeLayout;
 #### wants to generate content for a fixed amount of time. 
 ####
 
-use strict;
-use warnings;
+use Moo;
+
+has 'time' => (
+	is => 'ro',
+	required => 1
+);
+
 use Carp;
 
-############################# Class Constants #############################
-
-############################## Class Methods ##############################
-
-##
-## new()
-##
-## Arguments:
-##   TIME: int -- Amount of time for fixed layout to return
-##
-## Creates a new FixedTimeLayout that returns TIME.
-##
-sub new {
+sub BUILDARGS {
   my $type = shift;
   my ($time) = @_;
-  defined $time or croak($type, "::new() called incorrectly");
 
-  my $self = { time => $time };
-  bless $self, $type;
+  return  { time => $time };
 }
 
 ############################# Object Methods ##############################
@@ -42,8 +35,10 @@ sub new {
 ## Returns the minimum amount of time the fill can take. In this case,
 ## returns the fixed time.
 ##
-sub min_time { 
-  return $_[0]->{time};
+sub min_time {
+   my $self = shift;
+
+  return $self->time();
 }
 
 ##
@@ -54,8 +49,10 @@ sub min_time {
 ##
 ## Returns the fixed time.
 ##
-sub preferred_time { 
-  return $_[0]->{time};
+sub preferred_time {
+	my $self = shift;
+
+  return $self->time;
 }
 
 1;

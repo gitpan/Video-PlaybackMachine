@@ -1,5 +1,7 @@
 package Video::PlaybackMachine::FillProducer::SlideShow;
 
+our $VERSION = '0.09'; # VERSION
+
 ####
 #### Video::PlaybackMachine::FillProducer::SlideShow
 ####
@@ -9,72 +11,83 @@ package Video::PlaybackMachine::FillProducer::SlideShow;
 #### at particular delay times, launches its own POE session.
 ####
 
-use strict;
-use warnings;
+use Moo;
 
 use Carp;
 use POE;
 use Log::Log4perl;
 
-use base 'Video::PlaybackMachine::FillProducer';
-
 use Video::PlaybackMachine::TimeLayout::GranularTimeLayout;
 use Video::PlaybackMachine::Player qw(PLAYBACK_OK PLAYBACK_STOPPED);
 use Video::PlaybackMachine::FillProducer::Chooser;
 
-############################# Class Constants #############################
+############################# Parameters #############################
 
-# Maximum number of slides to play in a row
-our $Max_Slides = 5;
+has 'max_slides' => (
+	'is' => 'ro',
+	'default' => 5
+);
+
+has 'frame_chooser' => (
+	is => 'lazy'
+);
+
+has 'time' => (
+	is => 'ro',
+	required => 1
+);
+
+has 'time_layout' => (
+	is => 'lazy',
+);
+
+has 'directory' => (
+	is => 'ro',
+	required => 1
+);
+
+has 'music_directory' => (
+	is => 'ro',
+	required => 1
+);
+
+has 'music_chooser' => (
+	is => 'lazy'
+);
+
+with 'Video::PlaybackMachine::FillProducer', 'Video::PlaybackMachine::Logger';
+
 
 ############################## Class Methods ##############################
 
-##
-## new()
-##
-## Arguments: (hash)
-##  TIME: int -- Time in seconds that we want to display a still
-##  DIRECTORY: string -- Directory containing stills we want to display
-##
-sub new
-{
-	my $type = shift;
-	my %in   = @_;
-
-	defined $in{time} or croak( $type, "::new() called incorrectly" );
-
-	my $self = {
-
-		time_layout =>
-		  Video::PlaybackMachine::TimeLayout::GranularTimeLayout->new(
-			$in{time}, $Max_Slides
-		  ),
-		frame_chooser => Video::PlaybackMachine::FillProducer::Chooser->new(
-			DIRECTORY => $in{'directory'},
-		),
-		music_chooser => Video::PlaybackMachine::FillProducer::Chooser->new(
-			DIRECTORY => $in{'music_directory'},
-			FILTER    => qr/\.(mp3|wav|ogg)$/
-		),
-		time   => $in{time},
-		logger => Log::Log4perl->get_logger(
-			'Video::PlaybackMachine::Filler::Slideshow'),
-
-	};
-
-	bless $self, $type;
-}
 
 ############################# Object Methods ##############################
 
-##
-## get_time_layout()
-##
-## Returns the FixedTimeLayout for the appropriate time.
-##
-sub get_time_layout
-{
-	$_[0]->{time_layout};
+sub _build_time_layout {
+	my $self = shift;
+
+	return Video::PlaybackMachine::TimeLayout::GranularTimeLayout->new(
+			$self->time(), $self->max_slides() 
+	);
+}
+
+sub _build_frame_chooser {
+	my $self = shift;
+	
+	return Video::PlaybackMachine::FillProducer::Chooser->new(
+		DIRECTORY => $self->directory(),
+	);
+
+}
+
+sub _build_music_chooser {
+	my $self = shift;
+	
+	return Video::PlaybackMachine::FillProducer::Chooser->new(
+			DIRECTORY => $self->music_directory(),
+			FILTER    => qr/\.(mp3|wav|ogg)$/
+		),
+
 }
 
 ##
@@ -92,7 +105,7 @@ sub is_available
 {
 	my $self = shift;
 
-	return $self->{'frame_chooser'}->is_available();
+	return $self->frame_chooser()->is_available();
 
 }
 
@@ -119,7 +132,7 @@ sub show_slide
 	# (The alarm cancel should be redundant.)
 	else
 	{
-		$self->{'logger'}->debug(
+		$self->debug(
 "Shutting down slideshow (time left=$time_played, $heap->{planned_time})"
 		);
 		$kernel->alarm_remove('show_slide');
@@ -148,7 +161,7 @@ sub start
 	my $self = shift;
 	my ($planned_time) = @_;
 
-	$self->{'logger'}->debug("Starting slideshow");
+	$self->debug("Starting slideshow");
 	my $heap = $poe_kernel->get_active_session->get_heap();
 	$heap->{'slide_start_time'} = time();
 	$heap->{'planned_time'}     = $planned_time;
@@ -161,29 +174,31 @@ sub start
 
 sub next_song
 {
-	$_[OBJECT]{'logger'}->debug("Running next song");
+	$_[OBJECT]->debug("Running next song");
 	$_[KERNEL]->post(
 		'Player', 'play_music',
 		$_[SESSION]->postback('song_done'),
-		$_[OBJECT]->{'music_chooser'}->choose()
+		$_[OBJECT]->music_chooser()->choose()
 	);
 }
 
 sub song_done
 {
-	$_[OBJECT]{'logger'}->debug("Song done");
+	$_[OBJECT]->debug("Song done");
 	my ( $stream, $status ) = @{ $_[ARG1] };
 	if ( $status == PLAYBACK_OK() )
 	{
-		$_[OBJECT]{'logger'}->debug("Returned OK, playing next song");
+		$_[OBJECT]->debug("Returned OK, playing next song");
 		$_[KERNEL]->yield('next_song');
 	}
 	else
 	{
-		$_[OBJECT]{'logger'}->debug("'$status' Not OK, stopping");
+		$_[OBJECT]->debug("'$status' Not OK, stopping");
 		$_[KERNEL]->alarm('next_song');
 	}
 }
+
+no Moo;
 
 1;
 

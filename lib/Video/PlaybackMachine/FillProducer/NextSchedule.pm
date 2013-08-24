@@ -1,16 +1,19 @@
 package Video::PlaybackMachine::FillProducer::NextSchedule;
 
+our $VERSION = '0.09'; # VERSION
+
 ####
 #### Video::PlaybackMachine::FillProducer::NextSchedule
 ####
 #### $Revision$
 ####
 
-use strict;
-use warnings;
+use Moo;
+
 use Carp;
 
-use base 'Video::PlaybackMachine::FillProducer::TextFrame';
+extends 'Video::PlaybackMachine::FillProducer::TextFrame';
+
 use Video::PlaybackMachine::FillProducer::TextFrame::TextTable;
 use POE;
 
@@ -24,18 +27,6 @@ our $Border = 20;
 
 ############################## Class Methods ##############################
 
-##
-## new()
-##
-## Arguments: (hash)
-##  time => int -- time in seconds image should be displayed
-##
-sub new {
-  my $type = shift;
-  my $self =  $type->SUPER::new(@_);
-  return $self;
-}
-
 
 
 ############################# Object Methods ##############################
@@ -47,16 +38,16 @@ sub add_text {
   my $self = shift;
   my ($image) = @_;
 
-  my $entries = $poe_kernel->call('Scheduler', 'query_next_scheduled', $Max_Entries)
+  my @entries = $poe_kernel->call('Scheduler', 'query_next_scheduled', $Max_Entries)
     or return;
   my $table = 
     Video::PlaybackMachine::FillProducer::TextFrame::TextTable->new(
 								    image => $image,
 								    border => $Border,
 								   );
-  foreach my $entry (@$entries) {
-    my $next_time = strftime '%l:%M', localtime ($entry->get_start_time());
-    $table->add_row($next_time, $entry->get_title())
+  foreach my $entry (@entries) {
+    my $next_time = strftime '%l:%M', localtime ($entry->start_time());
+    $table->add_row($next_time, $entry->movie_info()->title())
       or last;
   }
 
@@ -74,10 +65,10 @@ sub add_text {
 sub is_available {
   my $self = shift;
 
-  my $entries = $poe_kernel->call('Scheduler', 'query_next_scheduled', $Max_Entries)
+  my @entries = $poe_kernel->call('Scheduler', 'query_next_scheduled', $Max_Entries)
     or return;
 
-  return @$entries > 1;
+  return scalar @entries > 1;
 
 }
 

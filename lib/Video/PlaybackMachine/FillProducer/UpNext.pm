@@ -1,16 +1,19 @@
 package Video::PlaybackMachine::FillProducer::UpNext;
 
+our $VERSION = '0.09'; # VERSION
+
 ####
 #### Video::PlaybackMachine::FillProducer::UpNext
 ####
 #### $Revision$
 ####
 
-use strict;
-use warnings;
+use Moo;
+
 use Carp;
 
-use base 'Video::PlaybackMachine::FillProducer::TextFrame';
+extends 'Video::PlaybackMachine::FillProducer::TextFrame';
+
 use POE;
 
 use POSIX qw(strftime);
@@ -18,22 +21,6 @@ use POSIX qw(strftime);
 ############################# Class Constants #############################
 
 ############################## Class Methods ##############################
-
-##
-## new()
-##
-## Arguments: (hash)
-##  time => int -- time in seconds image should be displayed
-##
-sub new {
-  my $type = shift;
-
-  my $self = $type->SUPER::new(@_);
-
-  return $self;
-
-}
-
 
 ############################# Object Methods ##############################
 
@@ -46,9 +33,9 @@ sub add_text {
 
   my $entry = $poe_kernel->call('Scheduler', 'query_next_scheduled')
     or return;
-  my $next_time = strftime '%l:%M', localtime ($entry->get_start_time());
+  my $next_time = strftime '%l:%M', localtime ($entry->start_time());
 
-  $self->write_centered($image, "Up Next:\n\n" . $entry->get_title()  ."\n\n$next_time");
+  $self->write_centered($image, "Up Next:\n\n" . $entry->movie_info()->title()  ."\n\n$next_time");
 
 
 }
@@ -61,8 +48,11 @@ sub add_text {
 sub is_available {
   my $self = shift;
 
-  $poe_kernel->call('Scheduler', 'query_next_scheduled')
+  my $entry = $poe_kernel->call('Scheduler', 'query_next_scheduled')
     or return;
+    
+  $entry->movie_info() or return;  
+    
   1;
 }
 

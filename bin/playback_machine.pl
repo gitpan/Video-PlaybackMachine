@@ -2,7 +2,8 @@
 
 use strict;
 use warnings;
-use diagnostics;
+
+our $VERSION = '0.09'; # VERSION
 
 use Getopt::Long;
 
@@ -43,7 +44,7 @@ MAIN: {
 
     }
     else {
-	Video::PlaybackMachine->run();
+	Video::PlaybackMachine->run(undef, 1);
     }
 
 }

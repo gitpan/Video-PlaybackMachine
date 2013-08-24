@@ -1,5 +1,7 @@
 package Video::PlaybackMachine::FillProducer::AbstractStill;
 
+our $VERSION = '0.09'; # VERSION
+
 ####
 #### Video::PlaybackMachine::FillProducer::AbstractStill
 ####
@@ -8,41 +10,34 @@ package Video::PlaybackMachine::FillProducer::AbstractStill;
 #### 
 ####
 
-use strict;
-use warnings;
+use Moo::Role;
+
 use Carp;
 
-use base 'Video::PlaybackMachine::FillProducer';
+with 'Video::PlaybackMachine::FillProducer';
 
 use Video::PlaybackMachine::TimeLayout::FixedTimeLayout;
 
 
-############################# Class Constants #############################
+############################# Parameters #############################
 
-############################## Class Methods ##############################
+has 'time' => (
+	is => 'ro',
+	required => 1
+);
 
-##
-## new()
-##
-## Arguments: (hash)
-##  time: int -- Time in seconds that we want to display a still
-##
-sub new {
-  my $type = shift;
-  my %in = @_;
-
-  defined $in{time} or croak($type, "::new() called incorrectly");
-
-  my $self = {
-	      time_layout => 
-	      Video::PlaybackMachine::TimeLayout::FixedTimeLayout->new($in{time})
-	     };
-
-  bless $self, $type;
-}
+has 'time_layout' => (
+	is => 'lazy',
+);
 
 
 ############################# Object Methods ##############################
+
+sub _build_time_layout {
+	my $self = shift;
+	
+	return Video::PlaybackMachine::TimeLayout::FixedTimeLayout->new( $self->time() )
+}
 
 ##
 ## get_time_layout()
@@ -50,9 +45,13 @@ sub new {
 ## Returns the FixedTimeLayout for the appropriate time.
 ##
 sub get_time_layout {
-  $_[0]->{time_layout};
-}
+	my $self = shift;
+	
+	carp "get_time_layout() deprecated! use time_layout() instead!";
+	
+	return $self->time_layout();
 
+}
 
 ##
 ## has_audio()
@@ -68,6 +67,6 @@ sub has_audio { return; }
 ##
 sub is_available { 1; }
 
-
+no Moo::Role;
 
 1;

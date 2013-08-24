@@ -1,5 +1,7 @@
 package Video::PlaybackMachine::FillSegment;
 
+our $VERSION = '0.09'; # VERSION
+
 ####
 #### Video::PlaybackMachine::FillSegment
 ####
@@ -12,51 +14,37 @@ package Video::PlaybackMachine::FillSegment;
 #### Subject', followed by 'End Identification'.
 ####
 
-use strict;
-use warnings;
+use Moo;
+
 use Carp;
 
-############################# Class Constants #############################
+############################# Attributes #############################
+
+has 'name' => ( is => 'ro' );
+
+has 'sequence_order' => ( 'is' => 'ro' );
+
+has 'priority_order' => ( 'is' => 'ro' );
+
+has 'producer' => ( 'is' => 'ro', 'required' => 1 );
 
 ############################## Class Methods ##############################
-
-##
-## new()
-##
-## Arguments: hash
-##   name => string -- Name of the segment
-##   sequence_order => int -- Where this segment will be played in break
-##   priority_order => int -- Priority for segment if not enough time for all
-##   producer => FillProducer
-##
-sub new {
-  my $type = shift;
-  my %in = @_;
-
-  defined $in{'producer'} or croak "Must supply a producer; stopped";
-
-  my $self = {
-	      name => $in{name},
-	      sequence_order => $in{sequence_order},
-	      priority_order => $in{priority_order},
-	      producer => $in{producer},
-	     };
-
-  bless $self, $type;
-
-}
 
 
 ############################# Object Methods ##############################
 
-##
-## get_name()
-##
-## Returns the name of the segment.
-##
-sub get_name { 
-  $_[0]->{name};
+# Deprecate old get_ methods
+{
+	no strict 'refs';
+	
+	foreach my $attr ( qw/name producer/ ) {
+		*{__PACKAGE__ . '::get_' . $attr} = sub {
+			carp "Using get_${attr}() deprecated";
+			return $_[0]->$attr;
+		};
+	}
 }
+
 
 ##
 ## is_available()
@@ -70,11 +58,23 @@ sub get_name {
 sub is_available {
   my $self = shift;
   my ($time_left) = @_;
-  defined $time_left or croak(ref $self, "::is_available() called incorrectly");
+  defined $time_left or confess('Argument $time_left required');
 
-  $self->get_producer()->is_available() or return;
+  $self->producer()->is_available() or return;
 
-  return ($self->get_producer->get_time_layout()->min_time() <= $time_left);
+  return ($self->producer->time_layout()->min_time() <= $time_left);
+}
+
+
+##
+## get_priority()
+##
+## Returns the priority order of the segment.
+##
+sub get_priority {
+	my $self = shift;
+	carp "get_priority() deprecated; use priority_order() instead";
+  	return $self->priority_order();
 }
 
 ##
@@ -83,17 +83,11 @@ sub is_available {
 ## Returns the sequence order of the segment.
 ##
 sub get_sequence {
-  $_[0]->{sequence_order};
+	my $self = shift;
+	carp "get_sequence() deprecated; use sequence_order() instead";
+  	return $self->sequence_order();
 }
 
-##
-## get_priority()
-##
-## Returns the priority order of the segment.
-##
-sub get_priority {
-  $_[0]->{priority_order};
-}
 
 ##
 ## get_next()
@@ -103,17 +97,9 @@ sub get_priority {
 ##
 sub get_next {
   my $self = shift;
-  return $self->get_producer->get_next( $self->get_sequence() );
+  return $self->producer->get_next( $self->sequence_order() );
 }
 
-##
-## get_producer()
-##
-## Returns a FillProducer which we will use to produce
-## the content of this segment.
-##
-sub get_producer {
-  $_[0]->{producer};
-}
+no Moo;
 
 1;

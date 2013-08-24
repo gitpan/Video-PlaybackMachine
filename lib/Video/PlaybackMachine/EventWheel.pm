@@ -1,32 +1,31 @@
 package Video::PlaybackMachine::EventWheel;
 
-use strict;
-use warnings;
+our $VERSION = '0.09'; # VERSION
 
+use Moo::Role;
 use POE;
 
-############################# Class Constants ##########################
+has 'source' => (
+	'is' => 'ro',
+	'required' => 1
+);
 
-## How often to check for events
-use constant DEFAULT_CHECK_SECS => 1;
+has 'handlers' => (
+	'is' => 'ro',
+	'default' => sub { return {} }
+);
 
-############################# Class Methods ############################
+has 'logger' => (
+	'is' => 'ro',
+	'default' => sub { Log::Log4perl->get_logger('Video.PlaybackMachine.EventWheel') }
+);
 
+has 'check_interval_secs' => (
+	'is' => 'ro',
+	'default' => 3
+);
 
-sub new {
-  my $type = shift;
-  my ($source, %handlers) = @_;
-
-  my $self = {
-	      source => $source,
-	      handlers => { %handlers },
-	      logger => Log::Log4perl->get_logger('Video.PlaybackMachine.EventWheel'),
-	     };
-
-  bless $self, $type;
-}
-
-
+requires 'get_event';
 
 ############################ Object Methods ############################
 
@@ -58,14 +57,15 @@ sub session_cleanup {
 sub set_handler {
   my $self = shift;
   my ($event_id, $callback) = @_;
-  $self->{'handlers'}{$event_id} = $callback;
+  
+  $self->handlers->{$event_id} = $callback;
 }
 
-sub get_event {
-  my $self = shift;
-  my ($heap) = @_;
-
-  # Put code to check for new events here
+sub get_handler {
+	my $self = shift;
+	my ($event_type) = @_;
+	
+	return $self->handlers->{$event_type};
 }
 
 sub is_running {
@@ -91,19 +91,19 @@ sub get_events {
 
   # Translate all events into callbacks
   while ( my $event = $self->get_event($heap) ) {
-    $self->{'logger'}->debug("Received event: ", $event->get_type(), "\n");
-    if ( exists $self->{'handlers'}{$event->get_type()} ) {
-      $self->{'logger'}->debug("Invoking handler for ", $event->get_type(), "\n");
-      $self->{'handlers'}{$event->get_type()}->($self->{'source'}, $event);
+    $self->logger->debug("Received event: ", $event->get_type(), "\n");
+    if ( my $handler = $self->get_handler( $event->get_type() ) ) {
+      $self->logger->debug("Invoking handler for ", $event->get_type(), "\n");
+      $handler->($self->source(), $event);
     }
   }
 
   # Keep checking so long as we're playing
   if ( $self->is_running() ) {
-    $kernel->delay('get_events', DEFAULT_CHECK_SECS);
+    $kernel->delay( 'get_events', $self->check_interval_secs() );
   }
 }
 
-
+no Moo::Role;
 
 1;

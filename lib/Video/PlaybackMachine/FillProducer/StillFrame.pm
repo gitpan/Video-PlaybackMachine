@@ -1,5 +1,7 @@
 package Video::PlaybackMachine::FillProducer::StillFrame;
 
+our $VERSION = '0.09'; # VERSION
+
 ####
 #### Video::PlaybackMachine::FillProducer::StillFrame
 ####
@@ -8,34 +10,20 @@ package Video::PlaybackMachine::FillProducer::StillFrame;
 #### 
 ####
 
-use strict;
-use warnings;
+use Moo;
+
+with 'Video::PlaybackMachine::FillProducer::AbstractStill';
+
 use Carp;
 
-use base 'Video::PlaybackMachine::FillProducer::AbstractStill';
 use POE;
 
-############################# Class Constants #############################
+############################# Parameters #############################
 
-############################## Class Methods ##############################
-
-##
-## new()
-##
-## Arguments: (hash)
-##  image => string -- filename of image
-##  time => int -- time in seconds image should be displayed
-##
-sub new {
-  my $type = shift;
-  my %in = @_;
-
-  my $self = $type->SUPER::new(@_);
-
-  $self->{image} = $in{image};
-
-  return $self;
-}
+has 'image' => (
+	'is' => 'ro',
+	'required' => 1
+);
 
 ############################# Object Methods ##############################
 
@@ -50,14 +38,14 @@ sub new {
 sub start {
   my $self = shift;
 
-  $poe_kernel->post('Player', 'play_still', $self->{image}, sub {
+  $poe_kernel->post('Player', 'play_still', $self->image(), sub {
   	my ($rv) = @_;
   	if ( $rv == 2 ) {
   		$poe_kernel->delay('next_fill');
   		$poe_kernel->yield('next_fill');
   	}
   });
-  $poe_kernel->delay('next_fill', , $self->get_time_layout()->preferred_time());
+  $poe_kernel->delay('next_fill', $self->time_layout()->preferred_time());
 }
 
 ##
@@ -66,7 +54,9 @@ sub start {
 ## Reports that the still is available if the image file is readable.
 ##
 sub is_available {
-  return -r $_[0]->{'image'};
+	my $self = shift;
+
+	return -r $self->image();
 }
 
 1;

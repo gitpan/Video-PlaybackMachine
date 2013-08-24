@@ -1,5 +1,7 @@
 package Video::PlaybackMachine::FillProducer::Chooser;
 
+our $VERSION = '0.09'; # VERSION
+
 ####
 #### Video::PlaybackMachine::FillProducer::Chooser
 ####
@@ -10,13 +12,33 @@ package Video::PlaybackMachine::FillProducer::Chooser;
 #### new content.
 ####
 
-use strict;
-use warnings;
+use Moo;
+
+with 'Video::PlaybackMachine::Logger';
+
 use IO::Dir;
 use File::stat;
-use Log::Log4perl;
 
-############################# Class Constants ###########################
+############################# Attributes ###########################
+
+has 'DIRECTORY' => (
+	is => 'ro',
+	required => 1
+);
+
+has 'FILTER' => (
+	is => 'ro'
+);
+
+has 'SEEN' => (
+	is => 'rw',
+	default => sub { return {} }
+);
+
+has 'ITEMS' => (
+	is => 'rw',
+	default => sub { return []; }
+);
 
 ############################## Class Methods ############################
 
@@ -27,20 +49,6 @@ use Log::Log4perl;
 ##   DIRECTORY: string -- Directory from which we should choose things
 ##   FILTER: regexp -- Regular expression matching things we should return
 ##
-sub new
-{
-	my $type = shift;
-	my (%in) = @_;
-	my $self = {
-		DIRECTORY => $in{DIRECTORY},
-		FILTER    => $in{FILTER},
-		SEEN      => {},
-		ITEMS     => [],
-		LOGGER    =>
-		  Log::Log4perl->get_logger('Video::PlaybackMachine::Filler::Chooser'),
-	};
-	bless $self, $type;
-}
 
 ############################# Object Methods ##############################
 
@@ -56,7 +64,7 @@ sub choose
 
 	$self->_reload_items();
 
-	return shift @{ $self->{'ITEMS'} };
+	return shift @{ $self->ITEMS() };
 
 }
 
@@ -70,7 +78,7 @@ sub is_available
 	my $self = shift;
 
 	$self->_reload_items();
-	return @{ $self->{'ITEMS'} } > 0;
+	return @{ $self->ITEMS() } > 0;
 }
 
 ##
@@ -80,12 +88,12 @@ sub _reload_items
 {
 	my $self      = shift;
 	my @new_items = $self->_get_new_items();
-	$self->{'ITEMS'} = [ @new_items, @{ $self->{'ITEMS'} } ];
+	$self->ITEMS( [ @new_items, @{ $self->{'ITEMS'} } ] );
 
-	if ( @{ $self->{'ITEMS'} } == 0 )
+	if ( @{ $self->ITEMS() } == 0 )
 	{
-		$self->{'SEEN'}  = {};
-		$self->{'ITEMS'} = [ $self->_get_new_items() ];
+		$self->SEEN({});
+		$self->ITEMS( [ $self->_get_new_items() ] );
 	}
 
 	return 1;
@@ -95,26 +103,26 @@ sub _get_new_items
 {
 	my $self = shift;
 
-	-d $self->{'DIRECTORY'}
+	-d $self->DIRECTORY()
 	  or do
 	{
-		$self->{'LOGGER'}
-		  ->warn("Directory '$self->{'DIRECTORY'}' does not exist");
+		$self->warn("Directory '", $self->DIRECTORY(), "' does not exist");
 		return;
 	};
-	my $dh = IO::Dir->new( $self->{'DIRECTORY'} )
-	  or die "Couldn't open directory $self->{'DIRECTORY'}: $!; stopped";
+	my $dh = IO::Dir->new( $self->DIRECTORY() )
+	  or die "Couldn't open directory $self->DIRECTORY(): $!; stopped";
 	my @files = ();
 	while ( my $file = $dh->read() )
 	{
 		$file =~ /\.^/ and next;
-		if ( $self->{'FILTER'} )
+		if ( $self->FILTER )
 		{
-			$file =~ /$self->{'FILTER'}/ or next;
+			my $filter = $self->FILTER();
+			$file =~ /$filter/ or next;
 		}
-		my $full_file = "$self->{'DIRECTORY'}/$file";
+		my $full_file = $self->DIRECTORY() . "/$file";
 		-f $full_file or next;
-		$self->{'SEEN'}{$full_file}++ and next;
+		$self->SEEN()->{$full_file}++ and next;
 		push( @files, $full_file );
 	}
 
@@ -139,5 +147,7 @@ sub _random_sort
 	return sort { $getval->($a) <=> $getval->($b) } @items;
 
 }
+
+no Moo;
 
 1;

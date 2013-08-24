@@ -1,8 +1,10 @@
 package Video::PlaybackMachine::DB;
 
+our $VERSION = '0.09'; # VERSION
+
+
 use strict;
 use warnings;
-use diagnostics;
 
 =pod
 
@@ -19,28 +21,33 @@ Singleton database class for PlaybackMachine.
 use Carp;
 
 use Video::PlaybackMachine::Config;
+use Video::PlaybackMachine::Schema;
 
 
 ####################### Module Constants #########################
 
 our $Database_Name = Video::PlaybackMachine::Config->config()->database();
 
+our $Schema;
+
 ####################### Class Methods ############################
 
+sub schema {
+	my $type = shift;
+	
+	unless ( defined($Schema) && $Schema->storage->connected() ){
+		$Schema = Video::PlaybackMachine::Schema->connect("dbi:SQLite:dbname=$Database_Name", '', '');
+	}
+	
+	return $Schema;
+}
+
 sub db {
-  my $type = shift;
+	my $type = shift;
 
-  my $dbh = DBI->connect_cached( "dbi:Pg:dbname=$Database_Name", '', '', 
-			      {
-			       RaiseError => 1,
-			       AutoCommit => 1
-			      }
-			    )
-    or croak("Couldn't open database '$Database_Name' for reading: ",
-	     DBI->errstr(), ", stopped");
-
-  return $dbh;
-
+	my $Schema = $type->schema(@_);
+	
+	return $Schema->storage->dbh;
 }
 
 

@@ -1,8 +1,9 @@
 package Video::PlaybackMachine::Config;
 
+our $VERSION = '0.09'; # VERSION
+
 use strict;
 use warnings;
-use diagnostics;
 
 use AppConfig qw(:expand :argcount);
 our @ISA = qw(AppConfig);
@@ -13,6 +14,8 @@ use Log::Log4perl;
 
 our @Config_Files = (
     "$Bin/../conf/playback_machine.conf",
+    "$Bin/../Video-PlaybackMachine/conf/playback_machine.conf",
+    "$Bin/../../Video-PlaybackMachine/conf/playback_machine.conf",
     "/etc/playback_machine/playback_machine.conf"
 );
 
@@ -44,6 +47,8 @@ BEGIN {
         $config->define( 'stills', { ARGS => '=s' } );
 
         $config->define( 'music', { ARGS => '=s' } );
+        
+        $config->define( 'movies', { ARGS => '=s' } );
 
         $config->define( 'font_dir', { ARGS => '=s' } );
 
@@ -92,7 +97,9 @@ BEGIN {
 
         $config->define( 'time_tick=i', { DEFAULT => 5 } );
 
-        $config->define( 'daemonize!', { DEFAULT => 1 } );
+        $config->define( 'daemonize!', { DEFAULT => 0 } );
+        
+        $config->define( 'time_zone', { DEFAULT => 'America/Los_Angeles' } );
 
         $config->getopt();
 
@@ -138,8 +145,6 @@ sub _producer_table {
             font_path => [ $self->get('font_dir') ],
         ),
 
-        # Short film segment
-        shorts => Video::PlaybackMachine::FillProducer::FillShort->new($table),
 
     };
 
